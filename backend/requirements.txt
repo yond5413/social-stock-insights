@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+supabase
+cohere
+python-dotenv
+pydantic-settings
+arq
+httpx
+redis
+yfinance
+email-validator
