@@ -206,3 +206,4 @@ curl -X POST http://localhost:8000/posts/create \
 
 The migration is complete and ready for testing. All code has been updated to use Supabase Python SDK with proper authentication and Cohere embeddings.
 
+

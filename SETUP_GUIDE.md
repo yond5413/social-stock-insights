@@ -91,3 +91,4 @@ Replace the placeholder values with real API keys:
 - Variable names must start with `NEXT_PUBLIC_` for Next.js
 - Restart the frontend server
 
+

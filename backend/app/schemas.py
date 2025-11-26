@@ -31,3 +31,7 @@ class FeedItem(Post):
     summary: Optional[str] = None
     quality_score: Optional[float] = None
     final_score: float
+
+
+class BatchTickersRequest(BaseModel):
+    tickers: List[str] = Field(..., min_items=1, max_items=50, description="List of ticker symbols")

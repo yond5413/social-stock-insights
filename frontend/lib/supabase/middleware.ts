@@ -38,3 +38,4 @@ export async function updateSession(request: NextRequest) {
   return { user, response: supabaseResponse }
 }
 
+

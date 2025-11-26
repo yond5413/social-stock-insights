@@ -21,15 +21,16 @@ async def sync_user(
 ):
     """
     Sync user profile from frontend authentication.
-    Creates or updates user record in the database.
+    Updates profile record in the database if additional data is provided.
+    Note: Profile should already exist via the auth trigger.
     """
     # Verify the user_id matches the authenticated user
     if request.user_id != current_user_id:
         raise HTTPException(status_code=403, detail="User ID mismatch")
     
     try:
-        # Check if user exists
-        result = supabase.table("users").select("*").eq("id", current_user_id).execute()
+        # Check if profile exists
+        result = supabase.table("profiles").select("*").eq("id", current_user_id).execute()
         
         user_data = {
             "id": current_user_id,
@@ -38,21 +39,21 @@ async def sync_user(
         }
         
         if result.data:
-            # Update existing user
-            supabase.table("users").update(user_data).eq("id", current_user_id).execute()
+            # Update existing profile
+            supabase.table("profiles").update(user_data).eq("id", current_user_id).execute()
         else:
-            # Insert new user
-            supabase.table("users").insert(user_data).execute()
+            # Insert new profile (fallback if trigger didn't fire)
+            supabase.table("profiles").insert(user_data).execute()
         
         return {
             "status": "success",
-            "message": "User synced successfully",
+            "message": "User profile synced successfully",
             "user_id": current_user_id,
         }
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to sync user: {str(e)}"
+            detail=f"Failed to sync user profile: {str(e)}"
         )
 
 
@@ -63,10 +64,10 @@ async def get_current_user(
 ):
     """Get current authenticated user's profile."""
     try:
-        result = supabase.table("users").select("*").eq("id", current_user_id).execute()
+        result = supabase.table("profiles").select("*").eq("id", current_user_id).execute()
         
         if not result.data:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=404, detail="Profile not found")
         
         return result.data[0]
     except HTTPException:
@@ -74,6 +75,7 @@ async def get_current_user(
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to fetch user: {str(e)}"
+            detail=f"Failed to fetch profile: {str(e)}"
         )
+
 

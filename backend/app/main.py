@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import posts, insights, feed, dev, market, users
+from .routers import posts, insights, feed, market, users, admin, trends, transparency
 
 
 app = FastAPI(title="Social Stocks Insights API")
@@ -31,4 +31,6 @@ app.include_router(insights.router, prefix="/insights", tags=["insights"])
 app.include_router(feed.router, prefix="/feed", tags=["feed"])
 app.include_router(market.router, prefix="/market", tags=["market"])
 app.include_router(users.router, prefix="/users", tags=["users"])
-app.include_router(dev.router, prefix="/dev", tags=["dev"])
+app.include_router(admin.router, prefix="/admin", tags=["admin"])
+app.include_router(trends.router, prefix="/trends", tags=["trends"])
+app.include_router(transparency.router, prefix="/transparency", tags=["transparency"])

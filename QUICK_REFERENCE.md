@@ -71,3 +71,4 @@ npm run dev
 - Use the same Supabase URL and anon key for both frontend and backend
 - The service key is different from the anon key (and more powerful - keep it secret!)
 
+
