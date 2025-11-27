@@ -1,0 +1,21 @@
+{
+  "description": "Popular tickers for cache pre-warming. These are frequently searched stocks.",
+  "categories": {
+    "mega_cap_tech": ["AAPL", "MSFT", "GOOG", "GOOGL", "AMZN", "META", "NVDA", "TSLA", "ORCL", "IBM", "CRM", "ADBE"],
+    "blue_chips": ["JNJ", "PG", "KO", "XOM", "CVX", "PFE", "MRK", "MCD", "UNH", "V"],
+    "etfs": ["SPY", "QQQ", "DIA", "VTI", "IWM", "ARKK", "XLK", "XLF", "XLY", "XLE"],
+    "meme_stocks": ["AMC", "GME", "PLTR", "F", "RIVN", "NOK", "BB", "CLOV", "SPCE", "LCID"],
+    "semiconductors": ["AMD", "INTC", "QCOM", "TSM", "LRCX", "MU", "ASML"],
+    "ev_clean_energy": ["NIO", "GM", "PLUG", "BLDP"],
+    "finance": ["JPM", "BAC", "GS", "MS", "WFC", "PYPL", "SQ", "COIN"],
+    "consumer_retail": ["WMT", "COST", "HD", "LOW", "M", "MAR", "CCL", "DAL"],
+    "biotech": ["BNTX", "MRNA", "REGN", "GILD"],
+    "high_volatility": ["SOXL", "TQQQ", "SPXL", "ROKU", "SNOW", "NET"],
+    "crypto_proxy": ["BTC-USD", "ETH-USD"]
+  },
+  "priority_tickers": [
+    "NVDA", "TSLA", "AAPL", "AMD", "MSFT", "GOOGL", "AMZN", "META", "PLTR", "COIN",
+    "SPY", "QQQ", "GME", "AMC", "RIVN", "NIO", "JPM", "BAC", "V"
+  ]
+}
+

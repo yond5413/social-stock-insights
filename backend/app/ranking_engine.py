@@ -155,14 +155,18 @@ class EnsembleRanker:
         """
         Quality signal based on LLM quality score, confidence, and content features.
         """
-        base_score = post.get("quality_score", 0.5)
-        confidence = post.get("confidence_level", 0.5)
+        # Get values with defaults, handling None explicitly
+        quality_score_val = post.get("quality_score")
+        base_score = float(quality_score_val) if quality_score_val is not None else 0.5
+        
+        confidence_val = post.get("confidence_level")
+        confidence = float(confidence_val) if confidence_val is not None else 0.5
         
         # Bonus for high-confidence insights
         confidence_bonus = 0.1 if confidence > 0.8 else 0
         
         # Bonus for detailed content
-        content_length = len(post.get("content", ""))
+        content_length = len(post.get("content") or "")
         length_bonus = 0.05 if 200 < content_length < 2000 else 0
         
         # Bonus for having key points and catalysts
@@ -174,9 +178,15 @@ class EnsembleRanker:
         """
         Community signal based on engagement (likes, comments, views).
         """
-        like_count = post.get("like_count", 0)
-        comment_count = post.get("comment_count", 0)
-        view_count = post.get("view_count", 0)
+        # Get values with defaults, handling None explicitly
+        like_count_val = post.get("like_count")
+        like_count = int(like_count_val) if like_count_val is not None else 0
+        
+        comment_count_val = post.get("comment_count")
+        comment_count = int(comment_count_val) if comment_count_val is not None else 0
+        
+        view_count_val = post.get("view_count")
+        view_count = int(view_count_val) if view_count_val is not None else 0
         
         # Normalize scores (diminishing returns)
         like_score = min(1.0, math.log1p(like_count) / 5)
@@ -190,11 +200,16 @@ class EnsembleRanker:
         """
         Author signal based on reputation, historical accuracy, and expertise.
         """
-        reputation = post.get("author_reputation", 0.5)
-        historical_accuracy = post.get("historical_accuracy", 0.5)
+        # Get values with defaults, handling None explicitly
+        reputation_val = post.get("author_reputation")
+        reputation = float(reputation_val) if reputation_val is not None else 0.5
+        
+        historical_accuracy_val = post.get("historical_accuracy")
+        historical_accuracy = float(historical_accuracy_val) if historical_accuracy_val is not None else 0.5
         
         # Bonus for sector expertise
-        sector_expertise = post.get("sector_expertise_score", 0)
+        sector_expertise_val = post.get("sector_expertise_score")
+        sector_expertise = float(sector_expertise_val) if sector_expertise_val is not None else 0
         expertise_bonus = 0.1 if sector_expertise > 0.7 else 0
         
         # Weighted combination
@@ -205,11 +220,15 @@ class EnsembleRanker:
         """
         Market signal based on alignment score, ticker momentum, and relevance.
         """
-        alignment_score = post.get("market_alignment_score", 0.5)
-        relevance_score = post.get("relevance_score", 0.5)
+        # Get values with defaults, handling None explicitly
+        alignment_score_val = post.get("market_alignment_score")
+        alignment_score = float(alignment_score_val) if alignment_score_val is not None else 0.5
+        
+        relevance_score_val = post.get("relevance_score")
+        relevance_score = float(relevance_score_val) if relevance_score_val is not None else 0.5
         
         # Bonus for posts about trending tickers
-        is_trending = post.get("is_trending_ticker", False)
+        is_trending = post.get("is_trending_ticker") or False
         trending_bonus = 0.15 if is_trending else 0
         
         # Weighted combination

@@ -9,4 +9,5 @@ arq
 httpx
 redis
 yfinance
+pandas_market_calendars
 email-validator

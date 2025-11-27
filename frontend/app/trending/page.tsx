@@ -6,18 +6,171 @@ import { DashboardShell } from "@/components/layout/dashboard-shell"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { TrendingUp, TrendingDown, Flame, Clock } from "lucide-react"
+import { TrendingUp, TrendingDown, Flame, Clock, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { GradientText } from "@/components/ui/gradient-text"
 import { EnhancedSkeleton } from "@/components/ui/enhanced-skeleton"
 import { staggerContainer, fadeInUp } from "@/lib/animations"
 import { useApi } from "@/hooks/useApi"
+import { MiniSentimentChart, SentimentChartSkeleton } from "@/components/charts/sentiment-price-chart"
 
 interface TrendingTicker {
   ticker: string
   change_percent: number
   volume: number
   mentions?: number
+  price?: number
+}
+
+interface HistoryData {
+  ticker: string
+  prices: Array<{ date: string; close: number; volume?: number }>
+  sentiment: Array<{ date: string; score: number; post_count: number }>
+  overall_sentiment: "bullish" | "bearish" | "neutral" | "mixed"
+  total_posts: number
+}
+
+// Map UI timeframe to API period
+const timeframeToPeriod: Record<string, string> = {
+  "1H": "1D",  // API doesn't support 1H, use 1D with intraday
+  "1D": "1D",
+  "1W": "1W",
+  "1M": "1M",
+}
+
+function TickerCard({ 
+  ticker, 
+  index, 
+  timeframe 
+}: { 
+  ticker: TrendingTicker
+  index: number
+  timeframe: string 
+}) {
+  const { apiRequest } = useApi()
+  const [historyData, setHistoryData] = useState<HistoryData | null>(null)
+  const [chartLoading, setChartLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      setChartLoading(true)
+      try {
+        const period = timeframeToPeriod[timeframe] || "1M"
+        const data = await apiRequest<HistoryData>(`/market/history/${ticker.ticker}?period=${period}`)
+        setHistoryData(data)
+      } catch (err) {
+        console.warn(`Failed to fetch history for ${ticker.ticker}:`, err)
+        setHistoryData(null)
+      } finally {
+        setChartLoading(false)
+      }
+    }
+
+    fetchHistory()
+  }, [ticker.ticker, timeframe, apiRequest])
+
+  // Determine sentiment based on price change if no sentiment data
+  const overallSentiment = historyData?.overall_sentiment || 
+    (ticker.change_percent >= 2 ? "bullish" : 
+     ticker.change_percent <= -2 ? "bearish" : "neutral")
+
+  return (
+    <motion.div
+      variants={fadeInUp}
+      whileHover={{ y: -4, scale: 1.02 }}
+      transition={{ duration: 0.2 }}
+    >
+      <Card className={cn(
+        "group cursor-pointer glass-card border-border/50 hover:border-primary/30 hover:shadow-lg transition-all duration-300",
+        index === 0 && "border-orange-500/50 glow"
+      )}>
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-2xl font-bold">${ticker.ticker}</h3>
+                  {index === 0 && (
+                    <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white border-0">
+                      <Flame className="h-3 w-3 mr-1" />
+                      #1
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {ticker.volume?.toLocaleString()} volume
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <div className={cn(
+                  "flex items-center gap-1 text-sm font-semibold",
+                  ticker.change_percent >= 0
+                    ? "text-green-600 dark:text-green-400"
+                    : "text-red-600 dark:text-red-400"
+                )}>
+                  {ticker.change_percent >= 0 ? (
+                    <TrendingUp className="h-4 w-4" />
+                  ) : (
+                    <TrendingDown className="h-4 w-4" />
+                  )}
+                  {ticker.change_percent > 0 && "+"}
+                  {ticker.change_percent.toFixed(2)}%
+                </div>
+              </div>
+            </div>
+
+            {/* Chart Area */}
+            <div className="h-[60px] rounded-lg overflow-hidden bg-gradient-to-br from-muted/30 to-muted/10 border border-border/30">
+              {chartLoading ? (
+                <SentimentChartSkeleton height={60} />
+              ) : historyData && historyData.prices.length > 0 ? (
+                <MiniSentimentChart
+                  prices={historyData.prices}
+                  sentiment={historyData.sentiment}
+                  overallSentiment={overallSentiment as any}
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <p className="text-xs text-muted-foreground">No chart data</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex flex-wrap gap-2">
+              {ticker.mentions !== undefined && ticker.mentions > 0 && (
+                <Badge variant="secondary" className="text-xs gap-1">
+                  <MessageSquare className="h-3 w-3" />
+                  {ticker.mentions} mentions
+                </Badge>
+              )}
+              {historyData && historyData.total_posts > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {historyData.total_posts} posts
+                </Badge>
+              )}
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-xs",
+                  overallSentiment === "bullish"
+                    ? "border-green-500/30 text-green-700 dark:text-green-400"
+                    : overallSentiment === "bearish"
+                    ? "border-red-500/30 text-red-700 dark:text-red-400"
+                    : overallSentiment === "mixed"
+                    ? "border-amber-500/30 text-amber-700 dark:text-amber-400"
+                    : "border-violet-500/30 text-violet-700 dark:text-violet-400"
+                )}
+              >
+                {overallSentiment.charAt(0).toUpperCase() + overallSentiment.slice(1)}
+              </Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  )
 }
 
 export default function TrendingPage() {
@@ -67,7 +220,7 @@ export default function TrendingPage() {
                 <GradientText>Trending Tickers</GradientText>
               </h1>
               <p className="text-muted-foreground">
-                Most active stocks in the last 24 hours
+                Most active stocks with real-time sentiment analysis
               </p>
             </div>
           </div>
@@ -161,7 +314,7 @@ export default function TrendingPage() {
               <Card key={i} className="p-6">
                 <div className="space-y-3">
                   <EnhancedSkeleton className="h-8 w-20" />
-                  <EnhancedSkeleton className="h-24 w-full" />
+                  <SentimentChartSkeleton height={60} />
                   <div className="flex gap-2">
                     <EnhancedSkeleton className="h-6 w-16" />
                     <EnhancedSkeleton className="h-6 w-16" />
@@ -179,80 +332,12 @@ export default function TrendingPage() {
             className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
           >
             {tickers.map((ticker, index) => (
-              <motion.div
-                key={ticker.ticker}
-                variants={fadeInUp}
-                whileHover={{ y: -4, scale: 1.02 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Card className={cn(
-                  "group cursor-pointer glass-card border-border/50 hover:border-primary/30 hover:shadow-lg transition-all duration-300",
-                  index === 0 && "border-orange-500/50 glow"
-                )}>
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
-                      {/* Header */}
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-2xl font-bold">${ticker.ticker}</h3>
-                            {index === 0 && (
-                              <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white border-0">
-                                <Flame className="h-3 w-3 mr-1" />
-                                #1
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {ticker.volume.toLocaleString()} volume
-                          </p>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                          <div className={cn(
-                            "flex items-center gap-1 text-sm font-semibold",
-                            ticker.change_percent >= 0
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-red-600 dark:text-red-400"
-                          )}>
-                            {ticker.change_percent >= 0 ? (
-                              <TrendingUp className="h-4 w-4" />
-                            ) : (
-                              <TrendingDown className="h-4 w-4" />
-                            )}
-                            {ticker.change_percent > 0 && "+"}
-                            {ticker.change_percent.toFixed(2)}%
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Mini Chart Placeholder */}
-                      <div className="h-20 rounded-lg bg-gradient-to-br from-violet-500/5 to-pink-500/5 border border-border/30 flex items-center justify-center">
-                        <p className="text-xs text-muted-foreground">Chart preview</p>
-                      </div>
-
-                      {/* Footer */}
-                      <div className="flex gap-2">
-                        {ticker.mentions && (
-                          <Badge variant="secondary" className="text-xs">
-                            {ticker.mentions} mentions
-                          </Badge>
-                        )}
-                        <Badge 
-                          variant="outline" 
-                          className={cn(
-                            "text-xs",
-                            ticker.change_percent >= 0
-                              ? "border-green-500/30 text-green-700 dark:text-green-400"
-                              : "border-red-500/30 text-red-700 dark:text-red-400"
-                          )}
-                        >
-                          {ticker.change_percent >= 0 ? "Bullish" : "Bearish"}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
+              <TickerCard 
+                key={ticker.ticker} 
+                ticker={ticker} 
+                index={index}
+                timeframe={timeframe}
+              />
             ))}
           </motion.div>
         )}

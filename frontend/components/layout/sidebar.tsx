@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, TrendingUp, Bookmark, User, Settings, Sparkles } from "lucide-react"
+import { Home, TrendingUp, Bookmark, User, Settings, Sparkles, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { GradientText } from "@/components/ui/gradient-text"
@@ -24,6 +24,12 @@ export function Sidebar({ className }: SidebarProps) {
       icon: TrendingUp,
       href: "/trending",
       active: pathname === "/trending",
+    },
+    {
+      label: "Chat",
+      icon: MessageSquare,
+      href: "/chat",
+      active: pathname === "/chat",
     },
     {
       label: "Bookmarks",

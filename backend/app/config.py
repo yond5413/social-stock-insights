@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # OpenRouter for LLM tagging and scoring
     openrouter_api_key: str = Field(alias="OPENROUTER_API_KEY")
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    openrouter_model_tagging: str = "openai/gpt-oss-20b:free"
+    openrouter_model_tagging: str = "x-ai/grok-4.1-fast:free"
 
     class Config:
         env_file = (".env", ".env.local")

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   MessageSquare,
@@ -11,6 +12,9 @@ import {
   ChevronDown,
   ChevronUp,
   TrendingUp,
+  Eye,
+  RefreshCw,
+  Zap,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -37,6 +41,16 @@ export function PostCard({ post }: PostCardProps) {
 
   const qualityScore = post.quality_score || 0
   const qualityPercent = qualityScore * 100
+  
+  // Get engagement metrics with defaults
+  const viewCount = post.view_count || 0
+  const likeCount = post.like_count || 0
+  const commentCount = post.comment_count || 0
+  const engagementScore = post.engagement_score || 0
+  const isProcessing = post.is_processing || false
+  
+  // Determine if this is a high-engagement post
+  const isHighEngagement = engagementScore > 100
 
   return (
     <motion.div
@@ -71,15 +85,54 @@ export function PostCard({ post }: PostCardProps) {
                     Top
                   </Badge>
                 )}
+                {isProcessing && (
+                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-blue-500/10 text-blue-600 border-blue-500/30">
+                    <RefreshCw className="h-2.5 w-2.5 mr-0.5 animate-spin" />
+                    Processing
+                  </Badge>
+                )}
+                {isHighEngagement && !isProcessing && (
+                  <motion.div
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">
+                      <Zap className="h-2.5 w-2.5 mr-0.5" />
+                      Hot
+                    </Badge>
+                  </motion.div>
+                )}
               </div>
-              <p className="text-xs text-muted-foreground">
-                {new Date(post.created_at).toLocaleDateString('en-US', { 
-                  month: 'short', 
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </p>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span>
+                  {new Date(post.created_at).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span>
+                {!isProcessing && (
+                  <>
+                    <span className="flex items-center gap-1">
+                      <Eye className="h-3 w-3" />
+                      {viewCount}
+                    </span>
+                    {likeCount > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Heart className="h-3 w-3" />
+                        {likeCount}
+                      </span>
+                    )}
+                    {commentCount > 0 && (
+                      <span className="flex items-center gap-1">
+                        <MessageSquare className="h-3 w-3" />
+                        {commentCount}
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
           <Button variant="ghost" size="icon" className="-mr-2 h-8 w-8 hover:bg-muted/50">
@@ -103,14 +156,16 @@ export function PostCard({ post }: PostCardProps) {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <Badge 
-                      variant="outline"
-                      className="gap-2 px-3 py-1.5 text-sm font-semibold bg-gradient-to-r from-violet-500/5 to-pink-500/5 border-border/50 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer"
-                    >
-                      <TrendingUp className="h-3 w-3 text-primary" />
-                      <span>{ticker}</span>
-                      <TickerChart ticker={ticker} />
-                    </Badge>
+                    <Link href={`/stock/${ticker}`}>
+                      <Badge 
+                        variant="outline"
+                        className="gap-2 px-3 py-1.5 text-sm font-semibold bg-gradient-to-r from-violet-500/5 to-pink-500/5 border-border/50 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer"
+                      >
+                        <TrendingUp className="h-3 w-3 text-primary" />
+                        <span>{ticker}</span>
+                        <TickerChart ticker={ticker} />
+                      </Badge>
+                    </Link>
                   </motion.div>
                 ))}
               </div>
