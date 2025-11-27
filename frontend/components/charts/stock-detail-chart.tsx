@@ -343,11 +343,11 @@ export function StockDetailChart({
                   dataKey="high"
                   shape={(props: any) => {
                     const { x, width, payload, yAxisMap } = props
-                    if (!payload || !yAxisMap) return null
+                    if (!payload || !yAxisMap) return <g />
                     
                     const yAxis = Object.values(yAxisMap)[0] as any
                     const yScale = yAxis?.scale
-                    if (!yScale) return null
+                    if (!yScale) return <g />
                     
                     const { open, close, high, low } = payload
                     const isUp = close >= open

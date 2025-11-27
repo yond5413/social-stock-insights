@@ -8,6 +8,12 @@ export interface FeedItem {
   summary?: string | null;
   quality_score?: number | null;
   final_score: number;
+  view_count?: number;
+  like_count?: number;
+  comment_count?: number;
+  engagement_score?: number;
+  sentiment?: string | null;
+  is_processing?: boolean;
 }
 
 
