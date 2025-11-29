@@ -78,6 +78,12 @@ origins = [
     "http://127.0.0.1:3000",
 ]
 
+# Add allowed origins from env
+import os
+env_origins = os.getenv("ALLOWED_ORIGINS")
+if env_origins:
+    origins.extend([origin.strip() for origin in env_origins.split(",")])
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,

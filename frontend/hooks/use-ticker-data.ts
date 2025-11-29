@@ -79,11 +79,11 @@ export function useTickerData(ticker: string) {
   const reconnectTimeout = useRef<NodeJS.Timeout | null>(null)
 
   // Fetch posts with SWR
-  const { 
-    data: postsData, 
-    error: postsError, 
+  const {
+    data: postsData,
+    error: postsError,
     isLoading: postsLoading,
-    mutate: mutatePosts 
+    mutate: mutatePosts
   } = useSWR<TickerPostsData>(
     ticker ? `/posts/by-ticker/${ticker}?limit=20` : null,
     async (path) => {
@@ -99,11 +99,11 @@ export function useTickerData(ticker: string) {
   )
 
   // Fetch sentiment with SWR
-  const { 
-    data: sentimentData, 
-    error: sentimentError, 
+  const {
+    data: sentimentData,
+    error: sentimentError,
     isLoading: sentimentLoading,
-    mutate: mutateSentiment 
+    mutate: mutateSentiment
   } = useSWR<TickerSentiment>(
     ticker ? `/insights/ticker/${ticker}/sentiment` : null,
     async (path) => {
@@ -125,7 +125,7 @@ export function useTickerData(ticker: string) {
 
     // Use ws:// for localhost, wss:// for production
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
     const wsBaseUrl = apiBaseUrl.replace(/^https?:\/\//, '')
     const wsUrl = `${wsProtocol}//${wsBaseUrl}/posts/ws/ticker/${ticker}`
 
@@ -142,11 +142,11 @@ export function useTickerData(ticker: string) {
       ws.onmessage = (event) => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data)
-          
+
           if (message.type === 'new_post' || message.type === 'post_processed') {
             // Mark that new posts are available
             setHasNewPosts(true)
-            
+
             // Optionally auto-refresh if user preference
             // For now, we'll just notify
           } else if (message.type === 'connected') {
@@ -234,22 +234,22 @@ export function useTickerData(ticker: string) {
     totalPosts: postsData?.total_count || 0,
     sentimentSummary: postsData?.sentiment_summary || { bullish: 0, bearish: 0, neutral: 0 },
     hasMore: postsData?.has_more || false,
-    
+
     // Sentiment data
     sentiment: sentimentData,
     confidenceLevel: sentimentData?.confidence_level || 'low',
     weightedSentiment: sentimentData?.weighted_sentiment || { bullish: 0, bearish: 0, neutral: 0 },
     topThemes: sentimentData?.top_themes || [],
-    
+
     // Loading states
     isLoading: postsLoading || sentimentLoading,
     isError: !!postsError || !!sentimentError,
     error: postsError || sentimentError,
-    
+
     // WebSocket state
     wsConnected,
     hasNewPosts,
-    
+
     // Methods
     refresh,
     markAsViewed,
