@@ -74,9 +74,9 @@ function getSentimentGradient(sentiment: string) {
       }
     default:
       return {
-        stroke: "#8b5cf6", // violet-500
-        gradientStart: "#a78bfa", // violet-400
-        gradientEnd: "#8b5cf6",
+        stroke: "#3b82f6", // blue-500
+        gradientStart: "#60a5fa", // blue-400
+        gradientEnd: "#3b82f6",
       }
   }
 }

@@ -65,11 +65,11 @@ export function PostCard({ post }: PostCardProps) {
             {/* Avatar with gradient ring for high-quality posts */}
             <div className={cn(
               "rounded-full p-[2px]",
-              qualityScore > 0.7 && "bg-gradient-to-br from-violet-500 to-pink-500"
+              qualityScore > 0.7 && "bg-gradient-to-br from-blue-500 to-slate-500"
             )}>
               <Avatar className="h-10 w-10 md:h-12 md:w-12 border-2 border-background">
                 <AvatarImage src={`https://avatar.vercel.sh/${post.user_id}`} />
-                <AvatarFallback className="bg-gradient-to-br from-violet-500 to-pink-500 text-white font-semibold">
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-slate-500 text-white font-semibold">
                   {post.user_id.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -80,7 +80,7 @@ export function PostCard({ post }: PostCardProps) {
                   User {post.user_id.slice(0, 8)}
                 </p>
                 {qualityScore > 0.8 && (
-                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-gradient-to-r from-violet-500/10 to-pink-500/10 text-primary border-primary/20">
+                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-gradient-to-r from-blue-500/10 to-slate-500/10 text-primary border-primary/20">
                     <Sparkles className="h-2.5 w-2.5 mr-0.5" />
                     Top
                   </Badge>
@@ -159,7 +159,7 @@ export function PostCard({ post }: PostCardProps) {
                     <Link href={`/stock/${ticker}`}>
                       <Badge 
                         variant="outline"
-                        className="gap-2 px-3 py-1.5 text-sm font-semibold bg-gradient-to-r from-violet-500/5 to-pink-500/5 border-border/50 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer"
+                        className="gap-2 px-3 py-1.5 text-sm font-semibold bg-gradient-to-r from-blue-500/5 to-slate-500/5 border-border/50 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer"
                       >
                         <TrendingUp className="h-3 w-3 text-primary" />
                         <span>{ticker}</span>
@@ -174,20 +174,20 @@ export function PostCard({ post }: PostCardProps) {
 
           {/* AI Insight Section */}
           {post.summary && (
-            <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-violet-500/5 via-pink-500/5 to-blue-500/5 p-4">
+            <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-blue-500/5 via-slate-500/5 to-cyan-500/5 p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-violet-500 to-pink-500">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-slate-500">
                     <Sparkles className="h-3.5 w-3.5 text-white" />
                   </div>
-                  <span className="text-sm font-semibold bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">
+                  <span className="text-sm font-semibold bg-gradient-to-r from-blue-600 to-slate-600 bg-clip-text text-transparent">
                     AI Insight
                   </span>
                   {qualityPercent > 0 && (
                     <div className="flex items-center gap-1.5">
                       <div className="h-1.5 w-16 rounded-full bg-muted overflow-hidden">
                         <motion.div
-                          className="h-full bg-gradient-to-r from-violet-500 to-pink-500"
+                          className="h-full bg-gradient-to-r from-blue-500 to-slate-500"
                           initial={{ width: 0 }}
                           animate={{ width: `${qualityPercent}%` }}
                           transition={{ duration: 1, ease: "easeOut" }}
@@ -260,8 +260,8 @@ export function PostCard({ post }: PostCardProps) {
                 variant="ghost" 
                 size="sm" 
                 className={cn(
-                  "flex-1 gap-2 hover:text-pink-600 hover:bg-pink-500/10 transition-colors",
-                  isLiked && "text-pink-600"
+                  "flex-1 gap-2 hover:text-blue-600 hover:bg-blue-500/10 transition-colors",
+                  isLiked && "text-blue-600"
                 )}
                 onClick={() => setIsLiked(!isLiked)}
               >

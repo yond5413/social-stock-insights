@@ -52,7 +52,7 @@ export default function ProfilePage() {
         {/* Cover & Avatar */}
         <motion.div variants={fadeInUp} className="relative">
           {/* Cover Photo */}
-          <div className="h-32 md:h-48 rounded-xl bg-gradient-to-br from-violet-500 via-pink-500 to-blue-500 relative overflow-hidden">
+          <div className="h-32 md:h-48 rounded-xl bg-gradient-to-br from-blue-500 via-slate-500 to-blue-700 relative overflow-hidden">
             <div className="absolute inset-0 bg-grid opacity-10"></div>
           </div>
 
@@ -61,10 +61,10 @@ export default function ProfilePage() {
             <div className="flex flex-col md:flex-row gap-4 md:gap-6 -mt-12 md:-mt-16">
               {/* Avatar */}
               <div className="relative">
-                <div className="p-1 rounded-2xl bg-gradient-to-br from-violet-500 to-pink-500">
+                <div className="p-1 rounded-2xl bg-gradient-to-br from-blue-500 to-slate-500">
                   <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-background">
                     <AvatarImage src={`https://avatar.vercel.sh/${user.id}`} />
-                    <AvatarFallback className="text-2xl md:text-4xl font-bold bg-gradient-to-br from-violet-500 to-pink-500 text-white">
+                    <AvatarFallback className="text-2xl md:text-4xl font-bold bg-gradient-to-br from-blue-500 to-slate-500 text-white">
                       {user.email?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
@@ -84,14 +84,14 @@ export default function ProfilePage() {
                   <h1 className="text-2xl md:text-3xl font-bold">
                     {user.email?.split('@')[0] || 'User'}
                   </h1>
-                  <Badge className="bg-gradient-to-r from-violet-500 to-pink-500 text-white border-0">
+                  <Badge className="bg-gradient-to-r from-blue-500 to-slate-500 text-white border-0">
                     <Sparkles className="h-3 w-3 mr-1" />
                     Pro
                   </Badge>
                 </div>
                 <p className="text-muted-foreground">{user.email}</p>
                 <div className="flex gap-2 mt-2">
-                  <Button size="sm" className="bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600">
+                  <Button size="sm" className="bg-gradient-to-r from-blue-500 to-slate-500 hover:from-blue-600 hover:to-slate-600">
                     Edit Profile
                   </Button>
                   <Button size="sm" variant="outline">
@@ -146,7 +146,7 @@ export default function ProfilePage() {
                       className={cn(
                         "cursor-pointer transition-all",
                         achievement.unlocked
-                          ? "border-primary/30 bg-gradient-to-br from-violet-500/5 to-pink-500/5 hover:shadow-lg"
+                          ? "border-primary/30 bg-gradient-to-br from-blue-500/5 to-slate-500/5 hover:shadow-lg"
                           : "opacity-50 grayscale"
                       )}
                     >

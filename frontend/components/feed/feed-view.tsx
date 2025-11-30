@@ -52,7 +52,7 @@ export function FeedView() {
         {/* Filter Pills */}
         {user && (
           <motion.div variants={fadeInUp} className="flex gap-2 overflow-x-auto pb-2">
-            <Button variant="default" size="sm" className="bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600">
+            <Button variant="default" size="sm" className="bg-gradient-to-r from-blue-500 to-slate-500 hover:from-blue-600 hover:to-slate-600">
               <Sparkles className="h-3.5 w-3.5 mr-1.5" />
               All
             </Button>
@@ -73,7 +73,7 @@ export function FeedView() {
             <motion.div variants={fadeInUp}>
               <div className="rounded-xl border-2 border-dashed border-border p-12 text-center glass-card">
                 <div className="flex flex-col items-center gap-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-pink-500 shadow-lg shadow-violet-500/30">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-slate-500 shadow-lg shadow-blue-500/30">
                     <Sparkles className="h-8 w-8 text-white" />
                   </div>
                   <div>
@@ -84,7 +84,7 @@ export function FeedView() {
                       Sign in to view your personalized feed of AI-powered stock insights and market analysis.
                     </p>
                   </div>
-                  <Button size="lg" className="mt-2 bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600">
+                  <Button size="lg" className="mt-2 bg-gradient-to-r from-blue-500 to-slate-500 hover:from-blue-600 hover:to-slate-600">
                     Get Started
                   </Button>
                 </div>
@@ -148,7 +148,7 @@ export function FeedView() {
             <motion.div variants={fadeInUp}>
               <div className="rounded-xl border-2 border-dashed border-border p-12 text-center glass-card">
                 <div className="flex flex-col items-center gap-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-pink-500 shadow-lg shadow-violet-500/30 opacity-50">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-slate-500 shadow-lg shadow-blue-500/30 opacity-50">
                     <Sparkles className="h-8 w-8 text-white" />
                   </div>
                   <div>

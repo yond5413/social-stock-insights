@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
+import { apiRequest } from "@/lib/api"
 import { FollowButton } from "@/components/users/follow-button"
 import Link from "next/link"
 
@@ -34,15 +35,13 @@ export function UserSearch() {
 
             if (!session) return
 
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/search?query=${encodeURIComponent(query)}&limit=10`, {
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`
+            const data = await apiRequest<UserResult[]>(
+                `/users/search?query=${encodeURIComponent(query)}&limit=10`,
+                {
+                    token: session.access_token
                 }
-            })
-
-            if (!response.ok) throw new Error("Search failed")
-
-            const data = await response.json()
+            )
+            
             setResults(data)
         } catch (error) {
             console.error("Search error:", error)

@@ -42,11 +42,11 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen">
       {/* Left Side - Animated Gradient Background */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-violet-600 via-pink-600 to-blue-600 p-12">
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-blue-600 via-slate-600 to-blue-800 p-12">
         {/* Animated Background Pattern */}
         <div className="absolute inset-0 bg-grid opacity-10"></div>
         <motion.div
-          className="absolute inset-0 bg-gradient-to-br from-violet-500/20 via-pink-500/20 to-blue-500/20"
+          className="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-slate-500/20 to-blue-500/20"
           animate={{
             backgroundPosition: ['0% 0%', '100% 100%', '0% 0%'],
           }}
@@ -148,7 +148,7 @@ export default function LoginPage() {
             <CardHeader className="space-y-1 pb-6">
               {/* Mobile Logo */}
               <div className="lg:hidden flex items-center gap-2 mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-pink-500">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-slate-500">
                   <Sparkles className="h-5 w-5 text-white" />
                 </div>
                 <GradientText className="text-xl font-bold">Stock Insights</GradientText>
@@ -202,7 +202,7 @@ export default function LoginPage() {
               <CardFooter className="flex flex-col space-y-4">
                 <Button 
                   type="submit" 
-                  className="w-full h-11 bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 text-white font-medium" 
+                  className="w-full h-11 bg-gradient-to-r from-blue-500 to-slate-500 hover:from-blue-600 hover:to-slate-600 text-white font-medium" 
                   disabled={loading}
                 >
                   {loading ? (

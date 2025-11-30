@@ -212,26 +212,27 @@ async def search_posts(
     limit: int = Query(20, ge=1, le=50, description="Number of results to return"),
 ) -> List[Dict[str, Any]]:
     """
-    Search posts using semantic search.
+    Search posts using hybrid search (semantic + keyword).
+    Combines vector similarity search with full-text keyword matching.
     """
     try:
-        # Get embedding for the query (using the same model as ingestion)
-        # Note: In a real production app, we'd generate the embedding here.
-        # For now, we'll assume the client might send it or we rely on a text-based fallback
-        # if the RPC supports it. 
-        # WAIT - The RPC expects an embedding vector.
-        # We need to generate the embedding first.
-        # Let's check if we have an embedding function available.
+        # Generate embedding for the query using Cohere API
+        from ..llm import call_cohere_embedding_for_search
         
-        # Checking llm.py for embedding generation...
-        from ..llm import generate_embedding
+        query_embedding = await call_cohere_embedding_for_search(query)
         
-        query_embedding = await generate_embedding(query)
-        
+        if query_embedding is None:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Failed to generate embedding for query. Please try again."
+            )
+
         result = supabase.rpc(
-            "semantic_search_posts",
+            "hybrid_search_posts",
             {
+                "query_text": query,
                 "query_embedding": query_embedding,
+                "match_threshold": 0.3,  # Lower threshold to include more semantic results since we rank them
                 "search_limit": limit,
             }
         ).execute()
@@ -239,14 +240,15 @@ async def search_posts(
         posts = []
         if result.data:
             for row in result.data:
+                # Handle potential missing columns if RPC changed or if returning partial data
                 posts.append({
-                    "id": str(row["id"]),
-                    "user_id": str(row["user_id"]),
-                    "content": row["content"],
-                    "tickers": row["tickers"],
-                    "llm_status": row["llm_status"],
-                    "created_at": row["created_at"],
-                    "similarity": row["similarity"],
+                    "id": str(row.get("id")),
+                    "user_id": str(row.get("user_id")),
+                    "content": row.get("content"),
+                    "tickers": row.get("tickers", []),
+                    "llm_status": row.get("llm_status"),
+                    "created_at": row.get("created_at"),
+                    "similarity": row.get("similarity", 0.0),
                 })
         
         return posts

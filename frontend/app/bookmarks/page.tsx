@@ -19,7 +19,7 @@ export default function BookmarksPage() {
       >
         {/* Header */}
         <motion.div variants={fadeInUp} className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 shadow-lg shadow-violet-500/30">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-slate-500 shadow-lg shadow-blue-500/30">
             <Bookmark className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -37,7 +37,7 @@ export default function BookmarksPage() {
           <Card className="glass-card border-border/50">
             <CardContent className="p-12">
               <div className="flex flex-col items-center gap-4 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-pink-500 opacity-50">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-slate-500 opacity-50">
                   <Bookmark className="h-8 w-8 text-white" />
                 </div>
                 <div>
@@ -46,7 +46,7 @@ export default function BookmarksPage() {
                     Start bookmarking insightful posts to build your personal collection of market intelligence.
                   </p>
                 </div>
-                <Button className="mt-2 bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600">
+                <Button className="mt-2 bg-gradient-to-r from-blue-500 to-slate-500 hover:from-blue-600 hover:to-slate-600">
                   <Sparkles className="h-4 w-4 mr-2" />
                   Explore Feed
                 </Button>

@@ -29,7 +29,7 @@ export function AuthButtons() {
   if (!user) {
     return (
       <Link href="/login">
-        <Button className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700">
+        <Button className="bg-gradient-to-r from-blue-500 to-slate-500 text-white hover:from-blue-600 hover:to-slate-600">
           Sign in
         </Button>
       </Link>

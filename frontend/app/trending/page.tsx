@@ -160,7 +160,7 @@ function TickerCard({
                     ? "border-red-500/30 text-red-700 dark:text-red-400"
                     : overallSentiment === "mixed"
                     ? "border-amber-500/30 text-amber-700 dark:text-amber-400"
-                    : "border-violet-500/30 text-violet-700 dark:text-violet-400"
+                    : "border-blue-500/30 text-blue-700 dark:text-blue-400"
                 )}
               >
                 {overallSentiment.charAt(0).toUpperCase() + overallSentiment.slice(1)}
@@ -235,7 +235,7 @@ export default function TrendingPage() {
               size="sm"
               onClick={() => setTimeframe(tf)}
               className={cn(
-                timeframe === tf && "bg-gradient-to-r from-violet-500 to-pink-500"
+                timeframe === tf && "bg-gradient-to-r from-blue-500 to-slate-500"
               )}
             >
               <Clock className="h-3.5 w-3.5 mr-1.5" />

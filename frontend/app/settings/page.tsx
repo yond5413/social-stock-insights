@@ -21,7 +21,7 @@ export default function SettingsPage() {
       >
         {/* Header */}
         <motion.div variants={fadeInUp} className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 shadow-lg shadow-violet-500/30">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-slate-500 shadow-lg shadow-blue-500/30">
             <SettingsIcon className="h-6 w-6 text-white" />
           </div>
           <div>

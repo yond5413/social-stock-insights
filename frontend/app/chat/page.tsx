@@ -65,7 +65,7 @@ function TickerContextCard({ context }: { context: TickerContext }) {
               "text-xs",
               context.sentiment === "bullish" ? "border-green-500/30 text-green-600" :
               context.sentiment === "bearish" ? "border-red-500/30 text-red-600" :
-              "border-violet-500/30 text-violet-600"
+              "border-blue-500/30 text-blue-600"
             )}
           >
             {context.sentiment}
@@ -98,7 +98,7 @@ function ChatBubble({ message }: { message: ChatMessage }) {
       <div className={cn(
         "flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center",
         isUser 
-          ? "bg-gradient-to-br from-violet-500 to-pink-500" 
+          ? "bg-gradient-to-br from-blue-500 to-slate-500" 
           : "bg-gradient-to-br from-cyan-500 to-blue-500"
       )}>
         {isUser ? (
@@ -116,7 +116,7 @@ function ChatBubble({ message }: { message: ChatMessage }) {
         <div className={cn(
           "rounded-2xl px-4 py-3",
           isUser 
-            ? "bg-gradient-to-br from-violet-500 to-pink-500 text-white rounded-br-md" 
+            ? "bg-gradient-to-br from-blue-500 to-slate-500 text-white rounded-br-md" 
             : "bg-muted border border-border/50 rounded-bl-md"
         )}>
           <p className="text-sm whitespace-pre-wrap leading-relaxed">

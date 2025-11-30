@@ -10,7 +10,7 @@ export function GradientText({ children, className, animate = true }: GradientTe
   return (
     <span 
       className={cn(
-        "bg-gradient-to-r from-violet-600 via-pink-600 to-blue-600 bg-clip-text text-transparent font-bold",
+        "bg-gradient-to-r from-blue-600 via-slate-600 to-blue-500 bg-clip-text text-transparent font-bold",
         animate && "bg-[length:200%_200%] animate-gradient-shift",
         className
       )}

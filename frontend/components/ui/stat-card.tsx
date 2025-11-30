@@ -61,7 +61,7 @@ export function StatCard({
               </p>
             )}
           </div>
-          <div className="p-3 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500">
+          <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-slate-500">
             <Icon className="h-6 w-6 text-white" />
           </div>
         </div>

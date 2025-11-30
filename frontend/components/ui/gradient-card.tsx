@@ -17,8 +17,8 @@ export function GradientCard({
   return (
     <div className={cn(
       "relative rounded-xl p-[1px]",
-      "bg-gradient-to-br from-violet-500 via-pink-500 to-blue-500",
-      hoverGlow && "hover:shadow-[0_0_30px_rgba(124,58,237,0.5)] transition-shadow duration-300"
+      "bg-gradient-to-br from-blue-500 via-slate-500 to-cyan-500",
+      hoverGlow && "hover:shadow-[0_0_30px_rgba(59,130,246,0.5)] transition-shadow duration-300"
     )}>
       <Card className={cn(
         "bg-card",
