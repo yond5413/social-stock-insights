@@ -63,22 +63,26 @@ export function PostCard({ post }: PostCardProps) {
         <CardHeader className="flex flex-row items-start justify-between space-y-0 p-4 md:p-6">
           <div className="flex items-center space-x-3">
             {/* Avatar with gradient ring for high-quality posts */}
-            <div className={cn(
-              "rounded-full p-[2px]",
-              qualityScore > 0.7 && "bg-gradient-to-br from-blue-500 to-slate-500"
-            )}>
-              <Avatar className="h-10 w-10 md:h-12 md:w-12 border-2 border-background">
-                <AvatarImage src={`https://avatar.vercel.sh/${post.user_id}`} />
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-slate-500 text-white font-semibold">
-                  {post.user_id.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </div>
+            <Link href={`/profile/${post.user_id}`}>
+              <div className={cn(
+                "rounded-full p-[2px] transition-transform hover:scale-105",
+                qualityScore > 0.7 && "bg-gradient-to-br from-blue-500 to-slate-500"
+              )}>
+                <Avatar className="h-10 w-10 md:h-12 md:w-12 border-2 border-background">
+                  <AvatarImage src={`https://avatar.vercel.sh/${post.user_id}`} />
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-slate-500 text-white font-semibold">
+                    {post.user_id.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            </Link>
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold leading-none">
-                  User {post.user_id.slice(0, 8)}
-                </p>
+                <Link href={`/profile/${post.user_id}`}>
+                  <p className="text-sm font-semibold leading-none hover:text-primary transition-colors">
+                    User {post.user_id.slice(0, 8)}
+                  </p>
+                </Link>
                 {qualityScore > 0.8 && (
                   <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-gradient-to-r from-blue-500/10 to-slate-500/10 text-primary border-primary/20">
                     <Sparkles className="h-2.5 w-2.5 mr-0.5" />

@@ -65,9 +65,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut()
+      // Optimistic update - clear state and redirect immediately
+      setUser(null)
+      setSession(null)
       router.push('/login')
       router.refresh()
+      
+      // Perform actual sign out in background
+      await supabase.auth.signOut()
     } catch (error) {
       console.error('Error signing out:', error)
     }

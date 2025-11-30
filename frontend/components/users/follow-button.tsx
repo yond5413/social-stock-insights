@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { createClient } from "@/lib/supabase/client"
 import { Loader2, UserPlus, UserCheck } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useApi } from "@/hooks/useApi"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface FollowButtonProps {
     userId: string
@@ -17,7 +18,8 @@ export function FollowButton({ userId, initialIsFollowing, onFollowChange }: Fol
     const [loading, setLoading] = useState(true)
     const [actionLoading, setActionLoading] = useState(false)
     const { toast } = useToast()
-    const supabase = createClient()
+    const { apiRequest } = useApi()
+    const { user } = useAuth()
 
     useEffect(() => {
         if (initialIsFollowing !== undefined) {
@@ -26,26 +28,20 @@ export function FollowButton({ userId, initialIsFollowing, onFollowChange }: Fol
         }
 
         const checkFollowStatus = async () => {
+            if (!user) {
+                setLoading(false)
+                return
+            }
+            
+            // Don't show follow button for self
+            if (user.id === userId) {
+                setLoading(false)
+                return
+            }
+
             try {
-                const { data: { session } } = await supabase.auth.getSession()
-                if (!session) return
-
-                // Don't show follow button for self
-                if (session.user.id === userId) {
-                    setLoading(false)
-                    return
-                }
-
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${userId}/stats`, {
-                    headers: {
-                        Authorization: `Bearer ${session.access_token}`
-                    }
-                })
-
-                if (response.ok) {
-                    const data = await response.json()
-                    setIsFollowing(data.is_following)
-                }
+                const data = await apiRequest<{ is_following: boolean }>(`/users/${userId}/stats`)
+                setIsFollowing(data.is_following)
             } catch (error) {
                 console.error("Error checking follow status:", error)
             } finally {
@@ -54,30 +50,24 @@ export function FollowButton({ userId, initialIsFollowing, onFollowChange }: Fol
         }
 
         checkFollowStatus()
-    }, [userId, initialIsFollowing, supabase])
+    }, [userId, initialIsFollowing, user, apiRequest])
 
     const handleFollowToggle = async () => {
+        if (!user) {
+            toast({
+                title: "Authentication required",
+                description: "Please sign in to follow users.",
+                variant: "destructive",
+            })
+            return
+        }
+
         setActionLoading(true)
         try {
-            const { data: { session } } = await supabase.auth.getSession()
-            if (!session) {
-                toast({
-                    title: "Authentication required",
-                    description: "Please sign in to follow users.",
-                    variant: "destructive",
-                })
-                return
-            }
-
             const method = isFollowing ? "DELETE" : "POST"
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${userId}/follow`, {
+            await apiRequest(`/users/${userId}/follow`, {
                 method,
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`
-                }
             })
-
-            if (!response.ok) throw new Error("Failed to update follow status")
 
             const newStatus = !isFollowing
             setIsFollowing(newStatus)
@@ -107,9 +97,10 @@ export function FollowButton({ userId, initialIsFollowing, onFollowChange }: Fol
         )
     }
 
-    // Don't render anything if it's the current user (handled by logic above but safe to return null)
-    // We need to check current user ID to be sure, but for now we rely on the effect.
-    // Ideally we'd pass currentUserId as prop or get from context, but fetching session in effect handles it.
+    // Don't render if it's the current user
+    if (user?.id === userId) {
+        return null
+    }
 
     return (
         <Button

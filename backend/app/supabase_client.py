@@ -58,9 +58,30 @@ async def get_current_user_id(
         ) from exc
 
 
+async def get_optional_user_id(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    supabase: Client = Depends(get_supabase_client),
+) -> str | None:
+    """
+    Extract user ID from JWT token if present, otherwise return None.
+    Does not raise exception if not authenticated.
+    """
+    if credentials is None:
+        return None
+    
+    try:
+        user = supabase.auth.get_user(credentials.credentials)
+        if not user or not user.user:
+            return None
+        return user.user.id
+    except Exception:
+        return None
+
+
 # Type alias for dependency injection
 SupabaseClient = Annotated[Client, Depends(get_supabase_client)]
 CurrentUserId = Annotated[str, Depends(get_current_user_id)]
+OptionalUserId = Annotated[str | None, Depends(get_optional_user_id)]
 
 
 

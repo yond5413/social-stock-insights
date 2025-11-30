@@ -14,7 +14,7 @@ import { GradientText } from "@/components/ui/gradient-text"
 
 export function FeedView() {
   const { user, loading: authLoading } = useAuth()
-  const { feed, isLoading: feedLoading, isError, isNetworkError, errorMessage, mutate } = useFeed()
+  const { feed, isLoading: feedLoading, isError, isNetworkError, errorMessage, mutate, filter, setFilter } = useFeed()
 
   if (authLoading) {
     return (
@@ -52,15 +52,30 @@ export function FeedView() {
         {/* Filter Pills */}
         {user && (
           <motion.div variants={fadeInUp} className="flex gap-2 overflow-x-auto pb-2">
-            <Button variant="default" size="sm" className="bg-gradient-to-r from-blue-500 to-slate-500 hover:from-blue-600 hover:to-slate-600">
+            <Button 
+              variant={filter === "all" ? "default" : "outline"} 
+              size="sm" 
+              onClick={() => setFilter("all")}
+              className={filter === "all" ? "bg-gradient-to-r from-blue-500 to-slate-500 hover:from-blue-600 hover:to-slate-600" : "hover:bg-muted/50"}
+            >
               <Sparkles className="h-3.5 w-3.5 mr-1.5" />
               All
             </Button>
-            <Button variant="outline" size="sm" className="hover:bg-muted/50">
+            <Button 
+              variant={filter === "following" ? "default" : "outline"} 
+              size="sm" 
+              onClick={() => setFilter("following")}
+              className={filter === "following" ? "bg-gradient-to-r from-blue-500 to-slate-500" : "hover:bg-muted/50"}
+            >
               <Users className="h-3.5 w-3.5 mr-1.5" />
               Following
             </Button>
-            <Button variant="outline" size="sm" className="hover:bg-muted/50">
+            <Button 
+              variant={filter === "trending" ? "default" : "outline"} 
+              size="sm" 
+              onClick={() => setFilter("trending")}
+              className={filter === "trending" ? "bg-gradient-to-r from-blue-500 to-slate-500" : "hover:bg-muted/50"}
+            >
               <TrendingUp className="h-3.5 w-3.5 mr-1.5" />
               Trending
             </Button>

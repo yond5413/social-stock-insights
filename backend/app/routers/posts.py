@@ -1,11 +1,18 @@
 import asyncio
 from typing import List, Dict, Any, Optional, Set
-from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status, BackgroundTasks
 from datetime import datetime
+from pydantic import BaseModel
 
-from ..supabase_client import SupabaseClient, get_supabase_client
+from ..supabase_client import SupabaseClient, get_supabase_client, CurrentUserId
+from ..tasks import enqueue_post_processing
 
 router = APIRouter()
+
+class CreatePostRequest(BaseModel):
+    content: str
+    tickers: List[str] = []
+
 
 # WebSocket connection manager for ticker-specific posts
 class TickerConnectionManager:
@@ -48,6 +55,54 @@ class TickerConnectionManager:
             del self.ticker_connections[ticker_upper]
 
 ticker_manager = TickerConnectionManager()
+
+
+@router.post("/create")
+async def create_post(
+    request: CreatePostRequest,
+    user_id: CurrentUserId,
+    supabase: SupabaseClient,
+    background_tasks: BackgroundTasks,
+):
+    """Create a new post."""
+    try:
+        # Clean tickers
+        cleaned_tickers = [t.strip().upper() for t in request.tickers if t.strip()]
+        
+        data = {
+            "user_id": user_id,
+            "content": request.content,
+            "tickers": cleaned_tickers,
+            "llm_status": "pending",
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
+        }
+        
+        result = supabase.table("posts").insert(data).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to create post")
+            
+        post_id = result.data[0]["id"]
+        
+        # Trigger background processing
+        enqueue_post_processing(background_tasks, post_id)
+        
+        # Add computed fields for response
+        response_post = result.data[0]
+        response_post["is_processing"] = True
+        
+        return {
+            "status": "success",
+            "message": "Post created successfully",
+            "post": response_post
+        }
+    except Exception as e:
+        print(f"Error creating post: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating post: {str(e)}"
+        )
 
 
 @router.get("/by-ticker/{ticker}")
@@ -100,6 +155,7 @@ async def get_posts_by_ticker(
                     "explanation": row.get("explanation"),
                     "sentiment": row.get("sentiment"),
                     "quality_score": float(row["quality_score"]) if row.get("quality_score") else None,
+                    "final_score": float(row.get("final_score", 0)) if row.get("final_score") else 0.0,
                     "insight_type": row.get("insight_type"),
                     "sector": row.get("sector"),
                     "author_reputation": float(row["author_reputation"]) if row.get("author_reputation") else 0.0,
@@ -258,4 +314,53 @@ async def search_posts(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error searching posts: {str(e)}"
+        )
+
+
+@router.get("/user/{user_id}")
+async def get_user_posts(
+    user_id: str,
+    supabase: SupabaseClient,
+    limit: int = Query(20, ge=1, le=50, description="Number of results to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+) -> List[Dict[str, Any]]:
+    """
+    Get posts for a specific user.
+    """
+    try:
+        # Fetch posts directly from the table
+        result = supabase.table("posts").select("*").eq("user_id", user_id).order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+        
+        posts = []
+        if result.data:
+            for row in result.data:
+                posts.append({
+                    "id": str(row["id"]),
+                    "user_id": str(row["user_id"]),
+                    "content": row["content"],
+                    "tickers": row.get("tickers", []),
+                    "llm_status": row.get("llm_status"),
+                    "created_at": row["created_at"],
+                    "view_count": row.get("view_count", 0),
+                    "like_count": row.get("like_count", 0),
+                    "comment_count": row.get("comment_count", 0),
+                    "engagement_score": float(row.get("engagement_score", 0)) if row.get("engagement_score") else 0.0,
+                    "summary": row.get("summary"),
+                    "explanation": row.get("explanation"),
+                    "sentiment": row.get("sentiment"),
+                    "quality_score": float(row["quality_score"]) if row.get("quality_score") else None,
+                    "final_score": float(row.get("final_score", 0)) if row.get("final_score") else 0.0,
+                    "insight_type": row.get("insight_type"),
+                    "sector": row.get("sector"),
+                    "author_reputation": float(row.get("author_reputation", 0)) if row.get("author_reputation") else 0.0,
+                    "is_processing": row.get("is_processing", False),
+                })
+        
+        return posts
+
+    except Exception as e:
+        print(f"Error fetching user posts: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching user posts: {str(e)}"
         )

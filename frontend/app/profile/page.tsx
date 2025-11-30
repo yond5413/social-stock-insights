@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { DashboardShell } from "@/components/layout/dashboard-shell"
 import { useAuth } from "@/contexts/AuthContext"
@@ -10,11 +11,32 @@ import { Badge } from "@/components/ui/badge"
 import { GradientText } from "@/components/ui/gradient-text"
 import { StatCard } from "@/components/ui/stat-card"
 import { staggerContainer, fadeInUp } from "@/lib/animations"
-import { Edit, MessageSquare, TrendingUp, Award, Star, Sparkles } from "lucide-react"
+import { Edit, MessageSquare, TrendingUp, Award, Star, Sparkles, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { apiRequest } from "@/lib/api"
+import { FeedItem } from "@/lib/types"
+import { PostCard } from "@/components/feed/post-card"
 
 export default function ProfilePage() {
   const { user } = useAuth()
+  const [posts, setPosts] = useState<FeedItem[]>([])
+  const [loadingPosts, setLoadingPosts] = useState(true)
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      if (!user?.id) return
+      try {
+        const data = await apiRequest<FeedItem[]>(`/posts/user/${user.id}?limit=10`)
+        setPosts(data)
+      } catch (error) {
+        console.error("Failed to fetch user posts:", error)
+      } finally {
+        setLoadingPosts(false)
+      }
+    }
+
+    fetchPosts()
+  }, [user?.id])
 
   if (!user) {
     return (
@@ -172,9 +194,21 @@ export default function ProfilePage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-                <p>Your recent posts and insights will appear here</p>
-              </div>
+              {loadingPosts ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : posts.length > 0 ? (
+                <div className="space-y-4">
+                  {posts.map((post) => (
+                    <PostCard key={post.id} post={post} />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+                  <p>Your recent posts and insights will appear here</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>

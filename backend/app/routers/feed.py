@@ -146,11 +146,66 @@ async def get_timely_feed(
     if not result.data:
         return []
     
-    # Use timely ranking strategy
-    ranker = get_ranker("timely")
-    ranked_posts = ranker.rank_posts(result.data)
-    
     return [FeedItem(**post) for post in ranked_posts[:limit]]
+
+
+@router.get("/following", response_model=List[FeedItem])
+async def get_following_feed(
+    supabase: SupabaseClient,
+    user_id: CurrentUserId,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+) -> List[FeedItem]:
+    """
+    Feed of posts from users the current user follows.
+    """
+    # First get list of following IDs
+    following_result = supabase.table("follows").select("following_id").eq("follower_id", user_id).execute()
+    
+    if not following_result.data:
+        return []
+        
+    following_ids = [row["following_id"] for row in following_result.data]
+    
+    if not following_ids:
+        return []
+        
+    # Fetch posts from these users
+    result = supabase.table("posts").select(
+        "*, insights(summary, explanation, sentiment, quality_score, insight_type, sector)"
+    ).in_("user_id", following_ids).order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+
+    if not result.data:
+        return []
+        
+    posts = []
+    for row in result.data:
+        insight = row.get("insights", [{}])[0] if row.get("insights") else {}
+        
+        posts.append({
+            "id": str(row["id"]),
+            "user_id": str(row["user_id"]),
+            "content": row["content"],
+            "tickers": row.get("tickers", []),
+            "llm_status": row.get("llm_status"),
+            "created_at": row["created_at"],
+            "view_count": row.get("view_count", 0),
+            "like_count": row.get("like_count", 0),
+            "comment_count": row.get("comment_count", 0),
+            "engagement_score": float(row.get("engagement_score", 0)) if row.get("engagement_score") else 0.0,
+            "summary": insight.get("summary"),
+            "explanation": insight.get("explanation"),
+            "sentiment": insight.get("sentiment"),
+            "quality_score": float(insight["quality_score"]) if insight.get("quality_score") else None,
+            "final_score": float(row.get("final_score", 0)) if row.get("final_score") else 0.0,
+            "insight_type": insight.get("insight_type"),
+            "sector": insight.get("sector"),
+            "author_reputation": 0.0, # simplified for following feed
+            "is_processing": row.get("is_processing", False),
+        })
+        
+    return [FeedItem(**post) for post in posts]
+
 
 
 
