@@ -92,3 +92,4 @@ async def process_post_sync(post_id: str, timeout: Optional[float] = 30.0) -> bo
         logger.error(f"Error processing post {post_id} synchronously: {str(e)}")
         return False
 
+

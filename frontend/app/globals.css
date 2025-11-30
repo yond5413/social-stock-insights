@@ -10,8 +10,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
     
-    /* Violet/Pink Gradient Accent */
-    --primary: 249 75% 61%; /* #7c3aed */
+    /* Blue Accent - VS Code Inspired */
+    --primary: 217 91% 60%; /* #3b82f6 */
     --primary-foreground: 0 0% 98%;
     
     --secondary: 240 4.8% 95.9%;
@@ -24,7 +24,7 @@
     --destructive-foreground: 0 0% 98%;
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 249 75% 61%; /* Match primary */
+    --ring: 217 91% 60%; /* Match primary */
     --radius: 0.75rem;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
@@ -41,8 +41,8 @@
     --popover: 222 47% 5%;
     --popover-foreground: 210 40% 98%;
     
-    /* Violet/Pink Accent Dark Mode */
-    --primary: 249 75% 61%; /* #7c3aed - Keeps vibrancy */
+    /* Blue Accent Dark Mode */
+    --primary: 217 91% 60%; /* #3b82f6 - Keeps vibrancy */
     --primary-foreground: 222 47% 11%;
     
     --secondary: 217 33% 12%;
@@ -55,7 +55,7 @@
     --destructive-foreground: 210 40% 98%;
     --border: 217 33% 15%;
     --input: 217 33% 15%;
-    --ring: 249 75% 61%;
+    --ring: 217 91% 60%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -161,11 +161,11 @@ body {
 
 /* Gradient Utilities */
 .gradient-primary {
-  background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #64748b 100%);
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #3b82f6 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #64748b 50%, #94a3b8 100%);
   background-size: 200% 200%;
   background-clip: text;
   -webkit-background-clip: text;
@@ -175,7 +175,7 @@ body {
 
 .gradient-border {
   position: relative;
-  background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #64748b 100%);
   padding: 1px;
   border-radius: var(--radius-lg);
 }
@@ -186,7 +186,7 @@ body {
   inset: 0;
   border-radius: var(--radius-lg);
   padding: 1px;
-  background: linear-gradient(135deg, #7c3aed, #ec4899, #3b82f6);
+  background: linear-gradient(135deg, #3b82f6, #64748b, #94a3b8);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -229,11 +229,11 @@ body {
 
 /* Gradient Glow */
 .glow {
-  box-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
 }
 
 .dark .glow {
-  box-shadow: 0 0 30px rgba(124, 58, 237, 0.5);
+  box-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
 }
 
 /* Smooth Transitions */

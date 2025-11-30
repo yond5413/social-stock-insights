@@ -16,7 +16,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   loading: true,
-  signOut: async () => {},
+  signOut: async () => { },
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)
-        
+
         // Refresh the page to update server components
         if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
           router.refresh()
@@ -62,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [supabase, router])
 
+
   const signOut = async () => {
     try {
       await supabase.auth.signOut()
@@ -71,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Error signing out:', error)
     }
   }
+
 
   return (
     <AuthContext.Provider value={{ user, session, loading, signOut }}>

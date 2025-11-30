@@ -42,3 +42,4 @@ GRANT EXECUTE ON FUNCTION semantic_search_posts(vector(1024), int) TO service_ro
 
 
 
+

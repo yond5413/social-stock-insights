@@ -57,7 +57,7 @@ export function Sidebar({ className }: SidebarProps) {
         {/* Brand Logo */}
         <div className="px-3 py-2">
           <div className="flex items-center gap-2 px-4 mb-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 via-pink-500 to-blue-500 shadow-lg shadow-violet-500/30">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-slate-500 to-blue-600 shadow-lg shadow-blue-500/30">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -71,23 +71,25 @@ export function Sidebar({ className }: SidebarProps) {
           {/* Navigation */}
           <div className="space-y-1">
             {routes.map((route) => (
-              <Link key={route.href} href={route.href}>
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    "w-full justify-start gap-3 h-12 text-base font-medium transition-all hover:scale-[1.02]",
-                    route.active 
-                      ? "bg-gradient-to-r from-violet-500/10 to-pink-500/10 text-primary border-l-4 border-primary shadow-sm" 
-                      : "hover:bg-muted/50 border-l-4 border-transparent"
-                  )}
-                >
+              <Button
+                key={route.href}
+                variant="ghost"
+                asChild
+                className={cn(
+                  "w-full justify-start gap-3 h-12 text-base font-medium transition-all hover:scale-[1.02]",
+                  route.active 
+                    ? "bg-gradient-to-r from-blue-500/10 to-slate-500/10 text-primary border-l-4 border-primary shadow-sm" 
+                    : "hover:bg-muted/50 border-l-4 border-transparent"
+                )}
+              >
+                <Link href={route.href}>
                   <route.icon className={cn(
                     "h-5 w-5",
                     route.active && "text-primary"
                   )} />
                   <span>{route.label}</span>
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             ))}
           </div>
         </div>

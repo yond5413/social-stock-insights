@@ -183,3 +183,4 @@ SELECT
     (SELECT COUNT(*) FROM llm_audit_logs WHERE created_at > NOW() - INTERVAL '1 hour') as llm_calls_last_hour;
 
 
+

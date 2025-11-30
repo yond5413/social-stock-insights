@@ -47,3 +47,4 @@ CREATE POLICY "Service role can manage embeddings" ON post_embeddings
 -- Verify the semantic_search_posts function still works with the new dimension
 -- (The function already expects vector(1024), so no changes needed)
 
+

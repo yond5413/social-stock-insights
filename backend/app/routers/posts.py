@@ -204,3 +204,56 @@ async def ticker_posts_stream(websocket: WebSocket, ticker: str):
         print(f"WebSocket error for ticker {ticker}: {e}")
         ticker_manager.disconnect(websocket, ticker)
 
+
+@router.get("/search")
+async def search_posts(
+    supabase: SupabaseClient,
+    query: str = Query(..., min_length=1, description="Search query"),
+    limit: int = Query(20, ge=1, le=50, description="Number of results to return"),
+) -> List[Dict[str, Any]]:
+    """
+    Search posts using semantic search.
+    """
+    try:
+        # Get embedding for the query (using the same model as ingestion)
+        # Note: In a real production app, we'd generate the embedding here.
+        # For now, we'll assume the client might send it or we rely on a text-based fallback
+        # if the RPC supports it. 
+        # WAIT - The RPC expects an embedding vector.
+        # We need to generate the embedding first.
+        # Let's check if we have an embedding function available.
+        
+        # Checking llm.py for embedding generation...
+        from ..llm import generate_embedding
+        
+        query_embedding = await generate_embedding(query)
+        
+        result = supabase.rpc(
+            "semantic_search_posts",
+            {
+                "query_embedding": query_embedding,
+                "search_limit": limit,
+            }
+        ).execute()
+        
+        posts = []
+        if result.data:
+            for row in result.data:
+                posts.append({
+                    "id": str(row["id"]),
+                    "user_id": str(row["user_id"]),
+                    "content": row["content"],
+                    "tickers": row["tickers"],
+                    "llm_status": row["llm_status"],
+                    "created_at": row["created_at"],
+                    "similarity": row["similarity"],
+                })
+        
+        return posts
+        
+    except Exception as e:
+        print(f"Search error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error searching posts: {str(e)}"
+        )
