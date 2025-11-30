@@ -158,18 +158,25 @@ async def update_market_alignments_batch(limit: int = 50) -> Dict[str, Any]:
     supabase = get_supabase_client()
     
     try:
-        # Find posts from 24-48 hours ago that haven't been scored yet
-        threshold_end = datetime.utcnow() - timedelta(hours=24)
-        threshold_start = datetime.utcnow() - timedelta(hours=48)
+        # Find posts older than 24 hours that haven't been scored yet
+        # Check if market_alignment already exists to avoid duplicates
+        threshold = datetime.utcnow() - timedelta(hours=24)
         
-        # Get posts with insights that need scoring
+        # Get posts with insights that need scoring (older than 24h, not yet scored)
+        # First, get all processed posts older than 24h
         posts_result = supabase.table("posts").select(
             "id, user_id, tickers, created_at"
-        ).eq("llm_status", "processed").gte(
-            "created_at", threshold_start.isoformat()
-        ).lte(
-            "created_at", threshold_end.isoformat()
-        ).limit(limit).execute()
+        ).eq("llm_status", "processed").lt(
+            "created_at", threshold.isoformat()
+        ).order("created_at", desc=False).limit(limit).execute()
+        
+        # Filter out posts that already have market_alignments
+        if posts_result.data:
+            existing_alignments = supabase.table("market_alignments").select(
+                "post_id"
+            ).in_("post_id", [p["id"] for p in posts_result.data]).execute()
+            existing_post_ids = {a["post_id"] for a in (existing_alignments.data or [])}
+            posts_result.data = [p for p in posts_result.data if p["id"] not in existing_post_ids]
         
         if not posts_result.data:
             return {
@@ -225,6 +232,26 @@ async def update_market_alignments_batch(limit: int = 50) -> Dict[str, Any]:
                 supabase.table("insights").update({
                     "market_alignment_score": alignment_result["alignment_score"],
                 }).eq("post_id", post["id"]).execute()
+                
+                # Update user_predictions outcome based on alignment
+                # Determine outcome: correct if alignment_score > 0.7, incorrect if < 0.3, neutral otherwise
+                outcome = "pending"
+                if alignment_result["alignment_score"] >= 0.7:
+                    outcome = "correct"
+                elif alignment_result["alignment_score"] <= 0.3:
+                    outcome = "incorrect"
+                else:
+                    outcome = "neutral"
+                
+                # Update user_predictions for this post and ticker
+                try:
+                    supabase.table("user_predictions").update({
+                        "outcome": outcome,
+                        "verified_at": datetime.utcnow().isoformat(),
+                    }).eq("post_id", post["id"]).eq("ticker", primary_ticker).execute()
+                except Exception as pred_error:
+                    # Prediction might not exist, that's okay
+                    pass
                 
                 scored_count += 1
         
@@ -294,4 +321,5 @@ async def get_user_accuracy_stats(user_id: str) -> Dict[str, Any]:
             "error": str(e),
             "total_predictions": 0,
         }
+
 

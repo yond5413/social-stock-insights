@@ -32,3 +32,4 @@ GRANT EXECUTE ON FUNCTION get_trending_tickers(int, int) TO anon;
 GRANT EXECUTE ON FUNCTION get_trending_tickers(int, int) TO service_role;
 
 
+

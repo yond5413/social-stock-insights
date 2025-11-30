@@ -232,3 +232,4 @@ async def get_trends_summary(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching trends summary: {str(e)}")
 
+

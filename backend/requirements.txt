@@ -5,9 +5,8 @@ supabase
 cohere
 python-dotenv
 pydantic-settings
-arq
+apscheduler
 httpx
-redis
 yfinance
 pandas_market_calendars
 email-validator

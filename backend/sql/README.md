@@ -46,9 +46,24 @@ Requires Cohere embed-english-v3.0 embeddings (1024 dimensions).
 **Function:** `recompute_reputation()`
 
 Updates user reputation scores based on post quality and engagement metrics.
-Called by the ARQ worker cron job.
+Called by the scheduler cron job.
 
-### 5. `005_auto_create_profiles.sql` ⭐ **IMPORTANT**
+### 5. `010_fix_embedding_dimensions.sql` ⚠️ **REQUIRED**
+**Purpose:** Fix embedding dimension mismatch
+
+Fixes the `post_embeddings` table to use `vector(1024)` instead of `vector(1536)` to match Cohere's `embed-english-v3.0` embeddings.
+
+**What it does:**
+- Drops and recreates the `post_embeddings` table with correct `vector(1024)` dimension
+- Recreates necessary indexes for vector similarity search
+- Sets up RLS policies for authenticated access
+
+**Why it's important:**
+Without this migration, embedding insertions will fail with "expected 1536 dimensions, not 1024" errors. This migration must be applied before processing new posts.
+
+**Note:** This migration will delete all existing embeddings. Since the dimension mismatch prevents new embeddings anyway, this is safe. Existing posts will need to be reprocessed to regenerate embeddings.
+
+### 6. `005_auto_create_profiles.sql` ⭐ **IMPORTANT**
 **Function:** `handle_new_user()`  
 **Trigger:** `on_auth_user_created`
 
