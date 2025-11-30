@@ -71,7 +71,7 @@ export function PostCard({ post }: PostCardProps) {
                 <Avatar className="h-10 w-10 md:h-12 md:w-12 border-2 border-background">
                   <AvatarImage src={`https://avatar.vercel.sh/${post.user_id}`} />
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-slate-500 text-white font-semibold">
-                    {post.user_id.slice(0, 2).toUpperCase()}
+                    {(post.username || post.user_id).slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
               </div>
@@ -80,7 +80,7 @@ export function PostCard({ post }: PostCardProps) {
               <div className="flex items-center gap-2">
                 <Link href={`/profile/${post.user_id}`}>
                   <p className="text-sm font-semibold leading-none hover:text-primary transition-colors">
-                    User {post.user_id.slice(0, 8)}
+                    {post.username || `User ${post.user_id.slice(0, 8)}`}
                   </p>
                 </Link>
                 {qualityScore > 0.8 && (

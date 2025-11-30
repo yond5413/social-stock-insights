@@ -1,6 +1,7 @@
 export interface FeedItem {
   id: string;
   user_id: string;
+  username?: string | null;
   content: string;
   tickers: string[];
   llm_status: string | null;

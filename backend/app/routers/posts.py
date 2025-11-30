@@ -143,6 +143,7 @@ async def get_posts_by_ticker(
                 posts.append({
                     "id": str(row["post_id"]),
                     "user_id": str(row["user_id"]),
+                    "username": row.get("username"),
                     "content": row["content"],
                     "tickers": row["tickers"],
                     "llm_status": row["llm_status"],
@@ -331,12 +332,19 @@ async def get_user_posts(
         # Fetch posts directly from the table
         result = supabase.table("posts").select("*").eq("user_id", user_id).order("created_at", desc=True).range(offset, offset + limit - 1).execute()
         
+        # Get username from profile
+        profile_result = supabase.table("profiles").select("id, username").eq("id", user_id).execute()
+        username = None
+        if profile_result.data:
+            username = profile_result.data[0].get("username") or f"user_{user_id[:8]}"
+        
         posts = []
         if result.data:
             for row in result.data:
                 posts.append({
                     "id": str(row["id"]),
                     "user_id": str(row["user_id"]),
+                    "username": username,
                     "content": row["content"],
                     "tickers": row.get("tickers", []),
                     "llm_status": row.get("llm_status"),
