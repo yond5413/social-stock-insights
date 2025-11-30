@@ -28,6 +28,7 @@ class SearchResult(Post):
 
 
 class FeedItem(Post):
+    username: Optional[str] = None  # Added to prevent Pydantic from stripping this field
     summary: Optional[str] = None
     quality_score: Optional[float] = None
     final_score: float

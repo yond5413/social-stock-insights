@@ -137,13 +137,25 @@ async def get_posts_by_ticker(
         
         total_count = count_result.data if count_result.data else 0
         
+        # Fetch usernames for these posts
+        user_ids = list(set([str(row["user_id"]) for row in result.data]))
+        username_map = {}
+        if user_ids:
+            profiles_result = supabase.table("profiles").select("id, username").in_("id", user_ids).execute()
+            if profiles_result.data:
+                for profile in profiles_result.data:
+                    username_map[str(profile["id"])] = profile.get("username")
+
         posts = []
         if result.data:
             for row in result.data:
+                user_id = str(row["user_id"])
+                username = username_map.get(user_id) or row.get("username") or f"User {user_id[:8]}"
+                
                 posts.append({
                     "id": str(row["post_id"]),
-                    "user_id": str(row["user_id"]),
-                    "username": row.get("username"),
+                    "user_id": user_id,
+                    "username": username,
                     "content": row["content"],
                     "tickers": row["tickers"],
                     "llm_status": row["llm_status"],
@@ -372,3 +384,118 @@ async def get_user_posts(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching user posts: {str(e)}"
         )
+
+
+class CommentRequest(BaseModel):
+    content: str
+
+
+@router.post("/{post_id}/like")
+async def like_post(
+    post_id: str,
+    user_id: CurrentUserId,
+    supabase: SupabaseClient,
+):
+    """Like a post."""
+    try:
+        # Check if already liked
+        existing = supabase.table("post_engagement").select("id").eq("post_id", post_id).eq("user_id", user_id).eq("type", "like").execute()
+        
+        if existing.data:
+            # Unlike
+            supabase.table("post_engagement").delete().eq("id", existing.data[0]["id"]).execute()
+            action = "unliked"
+        else:
+            # Like
+            supabase.table("post_engagement").insert({
+                "post_id": post_id,
+                "user_id": user_id,
+                "type": "like"
+            }).execute()
+            action = "liked"
+            
+        return {"status": "success", "action": action}
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error toggling like: {str(e)}"
+        )
+
+
+@router.post("/{post_id}/comment")
+async def create_comment(
+    post_id: str,
+    request: CommentRequest,
+    user_id: CurrentUserId,
+    supabase: SupabaseClient,
+):
+    """Create a comment on a post."""
+    try:
+        data = {
+            "post_id": post_id,
+            "user_id": user_id,
+            "type": "comment",
+            "content": request.content,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        result = supabase.table("post_engagement").insert(data).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to create comment")
+            
+        return {"status": "success", "comment": result.data[0]}
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating comment: {str(e)}"
+        )
+
+
+@router.get("/{post_id}/comments")
+async def get_post_comments(
+    post_id: str,
+    supabase: SupabaseClient,
+):
+    """Get comments for a post."""
+    try:
+        result = supabase.table("post_engagement").select(
+            "id, user_id, content, created_at"
+        ).eq("post_id", post_id).eq("type", "comment").order("created_at", desc=False).execute()
+        
+        comments = []
+        if result.data:
+            # Fetch usernames
+            user_ids = list(set([row["user_id"] for row in result.data]))
+            username_map = {}
+            if user_ids:
+                profiles = supabase.table("profiles").select("id, username").in_("id", user_ids).execute()
+                if profiles.data:
+                    for p in profiles.data:
+                        username_map[p["id"]] = p.get("username")
+            
+            mapped_count = 0
+            for row in result.data:
+                username = username_map.get(row["user_id"])
+                if username:
+                    mapped_count += 1
+                
+                comments.append({
+                    "id": row["id"],
+                    "user_id": row["user_id"],
+                    "username": username or f"User {row['user_id'][:8]}",
+                    "content": row["content"],
+                    "created_at": row["created_at"]
+                })
+            print(f"Enriched {len(comments)} comments: {mapped_count} mapped")
+                
+        return comments
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching comments: {str(e)}"
+        )
+

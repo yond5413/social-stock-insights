@@ -30,6 +30,8 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { FeedItem } from "@/lib/types"
 import { TickerChart } from "./ticker-chart"
+import { useApi } from "@/hooks/useApi"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface PostCardProps {
   post: FeedItem
@@ -41,16 +43,42 @@ export function PostCard({ post }: PostCardProps) {
 
   const qualityScore = post.quality_score || 0
   const qualityPercent = qualityScore * 100
-  
+
   // Get engagement metrics with defaults
   const viewCount = post.view_count || 0
   const likeCount = post.like_count || 0
   const commentCount = post.comment_count || 0
   const engagementScore = post.engagement_score || 0
   const isProcessing = post.is_processing || false
-  
+
   // Determine if this is a high-engagement post
   const isHighEngagement = engagementScore > 100
+
+  const [likeCountState, setLikeCountState] = useState(likeCount)
+  const [commentCountState, setCommentCountState] = useState(commentCount)
+  const { apiRequest } = useApi()
+  const { user } = useAuth()
+
+  // Import CommentsDialog
+  const { CommentsDialog } = require("./comments-dialog")
+
+  const handleLike = async () => {
+    if (!user) return // Or show auth dialog
+
+    // Optimistic update
+    const newIsLiked = !isLiked
+    setIsLiked(newIsLiked)
+    setLikeCountState(prev => newIsLiked ? prev + 1 : prev - 1)
+
+    try {
+      await apiRequest(`/posts/${post.id}/like`, { method: "POST" })
+    } catch (error) {
+      // Revert on error
+      setIsLiked(!newIsLiked)
+      setLikeCountState(prev => !newIsLiked ? prev + 1 : prev - 1)
+      console.error("Failed to toggle like:", error)
+    }
+  }
 
   return (
     <motion.div
@@ -109,8 +137,8 @@ export function PostCard({ post }: PostCardProps) {
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span>
-                  {new Date(post.created_at).toLocaleDateString('en-US', { 
-                    month: 'short', 
+                  {new Date(post.created_at).toLocaleDateString('en-US', {
+                    month: 'short',
                     day: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit'
@@ -122,16 +150,16 @@ export function PostCard({ post }: PostCardProps) {
                       <Eye className="h-3 w-3" />
                       {viewCount}
                     </span>
-                    {likeCount > 0 && (
+                    {likeCountState > 0 && (
                       <span className="flex items-center gap-1">
                         <Heart className="h-3 w-3" />
-                        {likeCount}
+                        {likeCountState}
                       </span>
                     )}
-                    {commentCount > 0 && (
+                    {commentCountState > 0 && (
                       <span className="flex items-center gap-1">
                         <MessageSquare className="h-3 w-3" />
-                        {commentCount}
+                        {commentCountState}
                       </span>
                     )}
                   </>
@@ -143,14 +171,14 @@ export function PostCard({ post }: PostCardProps) {
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </CardHeader>
-        
+
         <CardContent className="px-4 md:px-6 pb-4">
           {/* Post Content */}
           <div className="mb-4 space-y-3">
             <p className="text-base leading-relaxed">
               {post.content}
             </p>
-            
+
             {/* Tickers */}
             {post.tickers && post.tickers.length > 0 && (
               <div className="flex flex-wrap gap-2 pt-2">
@@ -161,7 +189,7 @@ export function PostCard({ post }: PostCardProps) {
                     whileTap={{ scale: 0.95 }}
                   >
                     <Link href={`/stock/${ticker}`}>
-                      <Badge 
+                      <Badge
                         variant="outline"
                         className="gap-2 px-3 py-1.5 text-sm font-semibold bg-gradient-to-r from-blue-500/5 to-slate-500/5 border-border/50 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer"
                       >
@@ -220,7 +248,7 @@ export function PostCard({ post }: PostCardProps) {
                   )}
                 </Button>
               </div>
-              
+
               <AnimatePresence>
                 {showInsight && (
                   <motion.div
@@ -254,20 +282,20 @@ export function PostCard({ post }: PostCardProps) {
             </div>
           )}
         </CardContent>
-        
+
         <Separator className="opacity-50" />
-        
+
         <CardFooter className="p-2 md:p-3">
           <div className="flex w-full items-center justify-between text-muted-foreground">
             <motion.div whileTap={{ scale: 0.95 }} className="flex-1">
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className={cn(
                   "flex-1 gap-2 hover:text-blue-600 hover:bg-blue-500/10 transition-colors",
                   isLiked && "text-blue-600"
                 )}
-                onClick={() => setIsLiked(!isLiked)}
+                onClick={handleLike}
               >
                 <motion.div
                   animate={isLiked ? { scale: [1, 1.2, 1] } : {}}
@@ -275,14 +303,17 @@ export function PostCard({ post }: PostCardProps) {
                 >
                   <Heart className={cn("h-4 w-4", isLiked && "fill-current")} />
                 </motion.div>
-                <span className="text-xs font-medium">Like</span>
+                <span className="text-xs font-medium">
+                  {likeCountState > 0 ? likeCountState : "Like"}
+                </span>
               </Button>
             </motion.div>
             <motion.div whileTap={{ scale: 0.95 }} className="flex-1">
-              <Button variant="ghost" size="sm" className="flex-1 gap-2 hover:text-blue-600 hover:bg-blue-500/10 transition-colors">
-                <MessageSquare className="h-4 w-4" />
-                <span className="text-xs font-medium">Comment</span>
-              </Button>
+              <CommentsDialog
+                postId={post.id}
+                commentCount={commentCountState}
+                onCommentAdded={() => setCommentCountState(prev => prev + 1)}
+              />
             </motion.div>
             <motion.div whileTap={{ scale: 0.95 }} className="flex-1">
               <Button variant="ghost" size="sm" className="flex-1 gap-2 hover:text-green-600 hover:bg-green-500/10 transition-colors">

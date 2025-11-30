@@ -41,12 +41,24 @@ async def get_feed(
     if not result.data:
         return []
     
+    print(f"[get_feed] Fetched {len(result.data)} posts from RPC")
+    print(f"[get_feed] First post before enrichment: {result.data[0] if result.data else 'none'}")
+    
     # Use ensemble ranker to re-rank based on strategy
     ranker = get_ranker(strategy)
     ranked_posts = ranker.rank_posts(result.data)
     
     # Return top results
-    return [FeedItem(**post) for post in ranked_posts[:limit]]
+    ranked_posts = ranked_posts[:limit]
+    
+    print(f"[get_feed] About to enrich {len(ranked_posts)} posts")
+    
+    # Enrich with usernames
+    ranked_posts = await _enrich_posts_with_usernames(supabase, ranked_posts)
+    
+    print(f"[get_feed] After enrichment, first post: {ranked_posts[0] if ranked_posts else 'none'}")
+    
+    return [FeedItem(**post) for post in ranked_posts]
 
 
 @router.get("/personalized", response_model=List[FeedItem])
@@ -91,7 +103,12 @@ async def get_personalized_feed(
     ranker = get_ranker("balanced")  # Could create a true personalized strategy
     ranked_posts = ranker.rank_posts(result.data, user_preferences)
     
-    return [FeedItem(**post) for post in ranked_posts[:limit]]
+    ranked_posts = ranked_posts[:limit]
+    
+    # Enrich with usernames
+    ranked_posts = await _enrich_posts_with_usernames(supabase, ranked_posts)
+    
+    return [FeedItem(**post) for post in ranked_posts]
 
 
 @router.get("/discovery", response_model=List[FeedItem])
@@ -121,7 +138,12 @@ async def get_discovery_feed(
     ranker = get_ranker("diverse")
     ranked_posts = ranker.rank_posts(result.data)
     
-    return [FeedItem(**post) for post in ranked_posts[:limit]]
+    ranked_posts = ranked_posts[:limit]
+    
+    # Enrich with usernames
+    ranked_posts = await _enrich_posts_with_usernames(supabase, ranked_posts)
+    
+    return [FeedItem(**post) for post in ranked_posts]
 
 
 @router.get("/timely", response_model=List[FeedItem])
@@ -151,7 +173,12 @@ async def get_timely_feed(
     ranker = get_ranker("timely")
     ranked_posts = ranker.rank_posts(result.data)
     
-    return [FeedItem(**post) for post in ranked_posts[:limit]]
+    ranked_posts = ranked_posts[:limit]
+    
+    # Enrich with usernames
+    ranked_posts = await _enrich_posts_with_usernames(supabase, ranked_posts)
+    
+    return [FeedItem(**post) for post in ranked_posts]
 
 
 @router.get("/following", response_model=List[FeedItem])
@@ -165,21 +192,38 @@ async def get_following_feed(
     Feed of posts from users the current user follows.
     Only shows posts from users that the logged-in person follows.
     """
+    print(f"\n[get_following_feed] === DEBUGGING FOLLOWER FEED ===")
+    print(f"[get_following_feed] Current user_id: {user_id}")
+    print(f"[get_following_feed] Limit: {limit}, Offset: {offset}")
+    
     # First get list of following IDs
     following_result = supabase.table("follows").select("following_id").eq("follower_id", user_id).execute()
     
+    print(f"[get_following_feed] Follow query result: {following_result.data}")
+    print(f"[get_following_feed] Number of users following: {len(following_result.data) if following_result.data else 0}")
+    
     if not following_result.data or len(following_result.data) == 0:
+        print(f"[get_following_feed] User is not following anyone, returning empty feed")
         return []
+
         
     following_ids = [row["following_id"] for row in following_result.data]
+    
+    print(f"[get_following_feed] Following user IDs: {following_ids}")
     
     # Fetch posts from these users with proper joins
     posts_result = supabase.table("posts").select(
         "id, user_id, content, tickers, llm_status, created_at, view_count"
     ).in_("user_id", following_ids).order("created_at", desc=True).range(offset, offset + limit - 1).execute()
 
+    print(f"[get_following_feed] Posts query returned {len(posts_result.data) if posts_result.data else 0} posts")
+    if posts_result.data:
+        print(f"[get_following_feed] First post: ID={posts_result.data[0]['id']}, user_id={posts_result.data[0]['user_id']}")
+
     if not posts_result.data:
+        print(f"[get_following_feed] No posts found from followed users, returning empty feed")
         return []
+
     
     post_ids = [str(p["id"]) for p in posts_result.data]
     
@@ -199,17 +243,7 @@ async def get_following_feed(
         "user_id, overall_score"
     ).in_("user_id", author_ids).execute()
     
-    # Get usernames from profiles
-    profiles_result = supabase.table("profiles").select(
-        "id, username"
-    ).in_("id", author_ids).execute()
-    
     # Build lookup dictionaries
-    username_map = {}
-    if profiles_result.data:
-        for profile in profiles_result.data:
-            username_map[str(profile["id"])] = profile.get("username") or f"user_{str(profile['id'])[:8]}"
-    
     insights_map = {}
     if insights_result.data:
         for insight in insights_result.data:
@@ -271,7 +305,7 @@ async def get_following_feed(
         posts.append({
             "id": post_id,
             "user_id": user_id_str,
-            "username": username_map.get(user_id_str),
+            # Username will be enriched later
             "content": row["content"],
             "tickers": row.get("tickers", []),
             "llm_status": row.get("llm_status"),
@@ -289,8 +323,64 @@ async def get_following_feed(
     
     # Sort by final_score and created_at
     posts.sort(key=lambda x: (x["final_score"], x["created_at"]), reverse=True)
+    
+    # Enrich with usernames using the robust helper
+    posts = await _enrich_posts_with_usernames(supabase, posts)
         
     return [FeedItem(**post) for post in posts]
+
+
+async def _enrich_posts_with_usernames(supabase: SupabaseClient, posts: List[dict]) -> List[dict]:
+    """
+    Helper function to fetch usernames for a list of posts and add them to the post objects.
+    """
+    if not posts:
+        print("[_enrich_posts_with_usernames] No posts to enrich")
+        return []
+    
+    print(f"[_enrich_posts_with_usernames] Starting enrichment for {len(posts)} posts")
+        
+    # Extract user IDs
+    user_ids = list(set([str(post.get("user_id")) for post in posts if post.get("user_id")]))
+    
+    print(f"[_enrich_posts_with_usernames] Extracted {len(user_ids)} unique user_ids: {user_ids[:3]}...")
+    
+    if not user_ids:
+        print("[_enrich_posts_with_usernames] No user_ids found!")
+        return posts
+        
+    # Fetch profiles
+    profiles_result = supabase.table("profiles").select("id, username").in_("id", user_ids).execute()
+    
+    print(f"[_enrich_posts_with_usernames] Fetched {len(profiles_result.data) if profiles_result.data else 0} profiles")
+    if profiles_result.data:
+        print(f"[_enrich_posts_with_usernames] Sample profile: {profiles_result.data[0]}")
+    
+    # Create map
+    username_map = {}
+    if profiles_result.data:
+        for profile in profiles_result.data:
+            username_map[str(profile["id"])] = profile.get("username")
+    
+    print(f"[_enrich_posts_with_usernames] Username map: {username_map}")
+            
+    # Add usernames to posts
+    mapped_count = 0
+    fallback_count = 0
+    
+    for post in posts:
+        user_id = str(post.get("user_id"))
+        if user_id in username_map and username_map[user_id]:
+            post["username"] = username_map[user_id]
+            mapped_count += 1
+        else:
+            # Fallback if no username found
+            post["username"] = f"User {user_id[:8]}"
+            fallback_count += 1
+            
+    print(f"[_enrich_posts_with_usernames] Enriched {len(posts)} posts: {mapped_count} mapped, {fallback_count} fallbacks")
+    return posts
+
 
 
 
