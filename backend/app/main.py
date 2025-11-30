@@ -6,7 +6,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import posts, insights, feed, market, users, admin, trends, transparency, chat
+from .routers import insights, feed, market, users, admin, trends, transparency, chat, posts
+from .scheduler import start_scheduler, shutdown_scheduler
 
 
 def load_popular_tickers() -> list[str]:
@@ -63,11 +64,12 @@ async def warm_ticker_cache():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
-    # Startup: warm the cache
+    # Startup: warm the cache and start scheduler
     await warm_ticker_cache()
+    start_scheduler()
     yield
-    # Shutdown: cleanup if needed
-    pass
+    # Shutdown: stop scheduler
+    shutdown_scheduler()
 
 
 app = FastAPI(title="Social Stocks Insights API", lifespan=lifespan)
@@ -77,6 +79,12 @@ origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
+
+# Add allowed origins from env
+import os
+env_origins = os.getenv("ALLOWED_ORIGINS")
+if env_origins:
+    origins.extend([origin.strip() for origin in env_origins.split(",")])
 
 app.add_middleware(
     CORSMiddleware,
@@ -92,7 +100,6 @@ async def healthcheck():
     return {"status": "ok"}
 
 
-app.include_router(posts.router, prefix="/posts", tags=["posts"])
 app.include_router(insights.router, prefix="/insights", tags=["insights"])
 app.include_router(feed.router, prefix="/feed", tags=["feed"])
 app.include_router(market.router, prefix="/market", tags=["market"])
@@ -101,3 +108,4 @@ app.include_router(admin.router, prefix="/admin", tags=["admin"])
 app.include_router(trends.router, prefix="/trends", tags=["trends"])
 app.include_router(transparency.router, prefix="/transparency", tags=["transparency"])
 app.include_router(chat.router, prefix="/chat", tags=["chat"])
+app.include_router(posts.router, prefix="/posts", tags=["posts"])

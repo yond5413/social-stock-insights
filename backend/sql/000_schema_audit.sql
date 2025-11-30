@@ -182,3 +182,4 @@ SELECT
     (SELECT AVG(latency_ms) FROM llm_audit_logs WHERE created_at > NOW() - INTERVAL '24 hours') as avg_llm_latency_24h,
     (SELECT COUNT(*) FROM llm_audit_logs WHERE created_at > NOW() - INTERVAL '1 hour') as llm_calls_last_hour;
 
+

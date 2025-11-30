@@ -63,3 +63,4 @@ SupabaseClient = Annotated[Client, Depends(get_supabase_client)]
 CurrentUserId = Annotated[str, Depends(get_current_user_id)]
 
 
+

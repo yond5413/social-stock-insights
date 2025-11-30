@@ -103,17 +103,17 @@ export default function StockDetailPage() {
   const params = useParams()
   const router = useRouter()
   const ticker = (params.ticker as string)?.toUpperCase()
-  
+
   const [period, setPeriod] = useState<Period>("1M")
   const [snapshot, setSnapshot] = useState<MarketSnapshot | null>(null)
   const [history, setHistory] = useState<HistoryData | null>(null)
-  
+
   const [loadingSnapshot, setLoadingSnapshot] = useState(true)
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-  
+
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000"
+
   // Use ticker data hook for posts and sentiment
   const {
     posts,
@@ -128,12 +128,12 @@ export default function StockDetailPage() {
     hasNewPosts,
     refresh: refreshPosts,
   } = useTickerData(ticker)
-  
-  
+
+
   // Fetch market snapshot
   useEffect(() => {
     if (!ticker) return
-    
+
     setLoadingSnapshot(true)
     fetch(`${apiBase}/market/snapshot/${ticker}`)
       .then(async res => {
@@ -154,11 +154,11 @@ export default function StockDetailPage() {
       })
       .finally(() => setLoadingSnapshot(false))
   }, [ticker, apiBase])
-  
+
   // Fetch price history when period changes
   useEffect(() => {
     if (!ticker) return
-    
+
     setLoadingHistory(true)
     fetch(`${apiBase}/market/history/${ticker}?period=${period}`)
       .then(res => res.json())
@@ -166,14 +166,14 @@ export default function StockDetailPage() {
       .catch(err => console.error("Error fetching history:", err))
       .finally(() => setLoadingHistory(false))
   }, [ticker, period, apiBase])
-  
+
   // Calculate sentiment totals
   const sentimentTotal = useMemo(() => {
     if (!sentimentSummary) return 0
     const { bullish, bearish, neutral } = sentimentSummary
     return bullish + bearish + neutral
   }, [sentimentSummary])
-  
+
   if (error) {
     return (
       <div className="container max-w-7xl mx-auto px-4 py-8">
@@ -185,7 +185,7 @@ export default function StockDetailPage() {
           <CardContent className="py-16 text-center">
             <h2 className="text-2xl font-bold mb-2">Unable to Load Market Data</h2>
             <p className="text-muted-foreground mb-4">
-              {error === "Ticker not found" || error.includes("not found") 
+              {error === "Ticker not found" || error.includes("not found")
                 ? `We couldn't find market data for "${ticker}". Please check the ticker symbol and try again.`
                 : `There was an error loading data for "${ticker}": ${error}`
               }
@@ -203,9 +203,9 @@ export default function StockDetailPage() {
       </div>
     )
   }
-  
+
   const isUp = snapshot ? snapshot.change_percent >= 0 : true
-  
+
   return (
     <div className="container max-w-7xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
@@ -214,17 +214,17 @@ export default function StockDetailPage() {
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          
+
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-bold">{ticker}</h1>
               {!loadingSnapshot && snapshot && (
-                <Badge 
-                  variant="outline" 
+                <Badge
+                  variant="outline"
                   className={cn(
                     "text-sm font-semibold",
-                    isUp 
-                      ? "bg-green-500/10 text-green-600 border-green-500/30" 
+                    isUp
+                      ? "bg-green-500/10 text-green-600 border-green-500/30"
                       : "bg-red-500/10 text-red-600 border-red-500/30"
                   )}
                 >
@@ -240,11 +240,11 @@ export default function StockDetailPage() {
             )}
           </div>
         </div>
-        
+
         <Button variant="outline" size="sm" asChild>
-          <a 
-            href={`https://finance.yahoo.com/quote/${ticker}`} 
-            target="_blank" 
+          <a
+            href={`https://finance.yahoo.com/quote/${ticker}`}
+            target="_blank"
             rel="noopener noreferrer"
           >
             Yahoo Finance
@@ -252,7 +252,7 @@ export default function StockDetailPage() {
           </a>
         </Button>
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content - Chart and Stats */}
         <div className="lg:col-span-2 space-y-6">
@@ -287,7 +287,7 @@ export default function StockDetailPage() {
               )}
             </CardContent>
           </Card>
-          
+
           {/* Chart Card */}
           <Card className="glass-card border-border/50">
             <CardHeader className="pb-2">
@@ -296,7 +296,7 @@ export default function StockDetailPage() {
                   <BarChart3 className="h-5 w-5 text-primary" />
                   Price History
                 </CardTitle>
-                
+
                 {/* Period Selector */}
                 <div className="flex rounded-lg border border-border overflow-hidden">
                   {PERIODS.map((p) => (
@@ -333,7 +333,7 @@ export default function StockDetailPage() {
               )}
             </CardContent>
           </Card>
-          
+
           {/* Key Stats */}
           <Card className="glass-card border-border/50">
             <CardHeader>
@@ -363,24 +363,24 @@ export default function StockDetailPage() {
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-wider">Market Cap</p>
                     <p className="text-lg font-semibold">
-                      {snapshot.market_cap 
-                        ? (snapshot.market_cap / 1000000000).toFixed(2) + "B" 
+                      {snapshot.market_cap
+                        ? (snapshot.market_cap / 1000000000).toFixed(2) + "B"
                         : "N/A"}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-wider">52W High</p>
                     <p className="text-lg font-semibold text-green-500">
-                      {snapshot.fifty_two_week_high 
-                        ? "$" + snapshot.fifty_two_week_high.toFixed(2) 
+                      {snapshot.fifty_two_week_high
+                        ? "$" + snapshot.fifty_two_week_high.toFixed(2)
                         : "N/A"}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-wider">52W Low</p>
                     <p className="text-lg font-semibold text-red-500">
-                      {snapshot.fifty_two_week_low 
-                        ? "$" + snapshot.fifty_two_week_low.toFixed(2) 
+                      {snapshot.fifty_two_week_low
+                        ? "$" + snapshot.fifty_two_week_low.toFixed(2)
                         : "N/A"}
                     </p>
                   </div>
@@ -389,7 +389,7 @@ export default function StockDetailPage() {
             </CardContent>
           </Card>
         </div>
-        
+
         {/* Sidebar - Sentiment and Posts */}
         <div className="space-y-6">
           {/* Community Sentiment */}
@@ -419,7 +419,7 @@ export default function StockDetailPage() {
                 <div className="space-y-4">
                   {/* Confidence Badge */}
                   <div className="flex items-center justify-between">
-                    <Badge 
+                    <Badge
                       variant="outline"
                       className={cn(
                         "text-xs",
@@ -440,7 +440,7 @@ export default function StockDetailPage() {
                       </span>
                     )}
                   </div>
-                  
+
                   {/* Sentiment Bars - Use weighted sentiment for display */}
                   {sentimentTotal > 0 && (
                     <div className="space-y-3">
@@ -460,7 +460,7 @@ export default function StockDetailPage() {
                           />
                         </div>
                       </div>
-                      
+
                       <div className="space-y-1">
                         <div className="flex justify-between text-sm">
                           <span className="text-red-600 font-medium">Bearish</span>
@@ -477,7 +477,7 @@ export default function StockDetailPage() {
                           />
                         </div>
                       </div>
-                      
+
                       <div className="space-y-1">
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-600 font-medium">Neutral</span>
@@ -496,7 +496,7 @@ export default function StockDetailPage() {
                       </div>
                     </div>
                   )}
-                  
+
                   <div className="pt-2 border-t border-border space-y-2">
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
                       Based on {totalPosts} community {totalPosts === 1 ? 'post' : 'posts'}
@@ -518,7 +518,7 @@ export default function StockDetailPage() {
                       </p>
                     )}
                   </div>
-                  
+
                   {/* Top Themes */}
                   {topThemes.length > 0 && (
                     <div className="pt-2 border-t border-border">
@@ -540,7 +540,7 @@ export default function StockDetailPage() {
               )}
             </CardContent>
           </Card>
-          
+
           {/* Period Sentiment from History */}
           {history && history.overall_sentiment && (
             <Card className="glass-card border-border/50">
@@ -550,7 +550,7 @@ export default function StockDetailPage() {
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">{period} Sentiment</span>
                   </div>
-                  <Badge 
+                  <Badge
                     variant="outline"
                     className={cn(
                       history.overall_sentiment === "bullish" && "bg-green-500/10 text-green-600 border-green-500/30",
@@ -566,7 +566,7 @@ export default function StockDetailPage() {
           )}
         </div>
       </div>
-      
+
       {/* Recent Posts Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -588,7 +588,7 @@ export default function StockDetailPage() {
             )}
           </div>
         </div>
-        
+
         {/* New Posts Banner */}
         <AnimatePresence>
           {hasNewPosts && (
@@ -612,7 +612,7 @@ export default function StockDetailPage() {
             </motion.div>
           )}
         </AnimatePresence>
-        
+
         {loadingPosts ? (
           <div className="grid gap-4">
             {[...Array(3)].map((_, i) => (
@@ -639,8 +639,8 @@ export default function StockDetailPage() {
         ) : posts.length > 0 ? (
           <div className="grid gap-4">
             {posts.map((post) => (
-              <PostCard 
-                key={post.id} 
+              <PostCard
+                key={post.id}
                 post={{
                   id: post.id,
                   user_id: post.user_id,
@@ -660,7 +660,7 @@ export default function StockDetailPage() {
                 }}
               />
             ))}
-            
+
             {/* Show processing posts indicator if any */}
             {posts.some(p => p.is_processing) && (
               <Card className="glass-card border-dashed">

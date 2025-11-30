@@ -120,3 +120,4 @@ COMMENT ON FUNCTION get_ticker_posts_by_engagement IS
 COMMENT ON FUNCTION count_ticker_posts IS 
 'Count total posts mentioning a ticker for pagination.';
 
+

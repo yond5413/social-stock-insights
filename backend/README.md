@@ -9,7 +9,7 @@ FastAPI backend for the Social Stocks Insights platform, now powered by Supabase
 - **PostgreSQL RPC Functions**: Complex queries optimized as database functions
 - **Cohere Embeddings**: Using `embed-english-v3.0` for semantic search
 - **OpenRouter LLM**: For post analysis, tagging, and quality scoring
-- **ARQ Workers**: Async background jobs for LLM processing
+- **Background Tasks**: In-process async background jobs for LLM processing (APScheduler + FastAPI BackgroundTasks)
 - **yfinance**: Real-time market data integration
 
 ## Quick Start
@@ -56,13 +56,15 @@ uvicorn app.main:app --reload --port 8000
 
 The API will be available at `http://localhost:8000`
 
-### 5. Run the Worker (Optional)
+### 5. Background Processing
 
-For background LLM processing:
+Background LLM processing runs automatically in-process when the FastAPI server starts. The scheduler handles:
+- Processing new posts with LLM analysis
+- Retrying failed posts
+- Scheduled reputation recalculation
+- Market alignment scoring
 
-```bash
-arq app.worker.WorkerSettings
-```
+No separate worker process is needed - all background tasks run within the main uvicorn process.
 
 ## API Endpoints
 
@@ -112,7 +114,7 @@ POST /dev/seed - Seed database with test data
 
 ### LLM Processing
 - Tagging & Scoring: OpenRouter (configurable model)
-- Async Processing: ARQ workers
+- Async Processing: FastAPI BackgroundTasks + APScheduler
 - Audit Logging: `llm_audit_logs` table
 
 ## Project Structure
@@ -125,7 +127,8 @@ backend/
 │   ├── llm.py              # LLM & embedding functions
 │   ├── main.py             # FastAPI application
 │   ├── schemas.py          # Pydantic models
-│   ├── worker.py           # ARQ background workers
+│   ├── scheduler.py        # APScheduler cron jobs
+│   ├── tasks.py            # Background task helpers
 │   └── routers/
 │       ├── posts.py        # Post CRUD
 │       ├── feed.py         # Ranked feed
@@ -196,5 +199,6 @@ Cohere uses 1024-dimensional embeddings. Update your schema if needed.
 ## License
 
 See root LICENSE file.
+
 
 

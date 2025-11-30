@@ -1,14 +1,15 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 import asyncio
 import logging
 from datetime import datetime
 
-from arq import cron
-from arq.connections import RedisSettings
+import yfinance as yf
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from .supabase_client import get_supabase_client
 from .llm import call_openrouter_chat, call_cohere_embedding
 from .market_signals import update_market_alignments_batch
+from datetime import timedelta
 
 
 # Set up logging
@@ -31,6 +32,10 @@ MODERATION_CONFIG = {
     "min_content_length": 20,
     "max_ticker_ratio": 0.5,  # Ratio of tickers to words
 }
+
+
+# Global scheduler instance
+scheduler = AsyncIOScheduler()
 
 
 def check_content_moderation(content: str, tickers: List[str], parsed_result: Dict[str, Any]) -> Dict[str, Any]:
@@ -170,7 +175,7 @@ async def update_user_reputation_aggregated(
         logger.error(f"Error updating reputation for user {user_id}: {e}")
 
 
-async def process_post(ctx: Dict[str, Any], post_id: str) -> None:
+async def process_post(post_id: str) -> None:
     """
     Fetch a post by id, run LLM analysis, write insights, embeddings, and audit logs.
     Includes comprehensive error handling and retry logic.
@@ -202,6 +207,7 @@ async def process_post(ctx: Dict[str, Any], post_id: str) -> None:
             quality_score = parsed.get("quality_score", 0.5)
             summary = parsed.get("summary")
             explanation = parsed.get("explanation")
+            sentiment = parsed.get("sentiment", "neutral")
             
             # Run content moderation check
             moderation_result = check_content_moderation(post["content"], tickers, parsed)
@@ -225,7 +231,7 @@ async def process_post(ctx: Dict[str, Any], post_id: str) -> None:
                 "relevance_score": parsed.get("relevance_score"),
                 "summary": summary,
                 "explanation": explanation,
-                "sentiment": parsed.get("sentiment"),
+                "sentiment": sentiment,
                 "key_points": parsed.get("key_points"),
                 "potential_catalysts": parsed.get("potential_catalysts"),
                 "risk_factors": parsed.get("risk_factors"),
@@ -248,23 +254,38 @@ async def process_post(ctx: Dict[str, Any], post_id: str) -> None:
 
             # Generate embeddings for content using Cohere (only if not flagged as spam)
             if moderation_result["status"] != "flagged":
-                content_embedding = await call_cohere_embedding(post["content"])
-                if content_embedding:
-                    supabase.table("post_embeddings").insert({
-                        "post_id": post["id"],
-                        "embedding": content_embedding,
-                        "type": "content",
-                    }).execute()
+                try:
+                    content_embedding = await call_cohere_embedding(post["content"])
+                    if content_embedding:
+                        # Verify embedding dimension matches expected (1024 for Cohere)
+                        if len(content_embedding) != 1024:
+                            logger.warning(f"Unexpected embedding dimension: {len(content_embedding)} (expected 1024) for post {post_id}")
+                        else:
+                            supabase.table("post_embeddings").insert({
+                                "post_id": post["id"],
+                                "embedding": content_embedding,
+                                "type": "content",
+                            }).execute()
+                            logger.debug(f"Inserted content embedding for post {post_id}")
+                except Exception as e:
+                    logger.error(f"Error inserting content embedding for post {post_id}: {e}")
 
                 # Generate summary embedding if available
                 if summary:
-                    summary_embedding = await call_cohere_embedding(summary)
-                    if summary_embedding:
-                        supabase.table("post_embeddings").insert({
-                            "post_id": post["id"],
-                            "embedding": summary_embedding,
-                            "type": "summary",
-                        }).execute()
+                    try:
+                        summary_embedding = await call_cohere_embedding(summary)
+                        if summary_embedding:
+                            if len(summary_embedding) != 1024:
+                                logger.warning(f"Unexpected summary embedding dimension: {len(summary_embedding)} (expected 1024) for post {post_id}")
+                            else:
+                                supabase.table("post_embeddings").insert({
+                                    "post_id": post["id"],
+                                    "embedding": summary_embedding,
+                                    "type": "summary",
+                                }).execute()
+                                logger.debug(f"Inserted summary embedding for post {post_id}")
+                    except Exception as e:
+                        logger.error(f"Error inserting summary embedding for post {post_id}: {e}")
             else:
                 logger.warning(f"Skipping embeddings for flagged post {post_id}")
 
@@ -276,6 +297,37 @@ async def process_post(ctx: Dict[str, Any], post_id: str) -> None:
                     adjusted_quality,
                     moderation_result["status"]
                 )
+            
+            # Create user_predictions entries for each ticker mentioned
+            if tickers and sentiment:
+                try:
+                    # Map sentiment to predicted direction
+                    sentiment_to_direction = {
+                        "bullish": "up",
+                        "bearish": "down",
+                        "neutral": "neutral",
+                    }
+                    predicted_direction = sentiment_to_direction.get(sentiment.lower(), "neutral")
+                    confidence = parsed.get("confidence_level", 0.5)
+                    
+                    # Create prediction for each ticker in the post
+                    for ticker in tickers[:5]:  # Limit to first 5 tickers to avoid spam
+                        try:
+                            supabase.table("user_predictions").insert({
+                                "post_id": post["id"],
+                                "user_id": post["user_id"],
+                                "ticker": ticker.upper(),
+                                "predicted_direction": predicted_direction,
+                                "confidence": float(confidence) if confidence is not None else 0.5,
+                                "outcome": "pending",  # Will be verified later by market_alignments
+                            }).execute()
+                            logger.debug(f"Created prediction for {ticker} in post {post_id}")
+                        except Exception as pred_error:
+                            # Handle duplicate key errors gracefully (if prediction already exists)
+                            if "duplicate" not in str(pred_error).lower():
+                                logger.warning(f"Error creating prediction for {ticker}: {pred_error}")
+                except Exception as e:
+                    logger.warning(f"Error creating user predictions for post {post_id}: {e}")
             
             # Mark post as processed
             supabase.table("posts").update({
@@ -301,19 +353,22 @@ async def process_post(ctx: Dict[str, Any], post_id: str) -> None:
                 }).eq("id", post["id"]).execute()
                 logger.error(f"Post {post_id} failed after {MAX_RETRIES} retries")
             else:
-                # Schedule retry
+                # Schedule retry with delay using asyncio
                 supabase.table("posts").update({
                     "llm_status": "pending",
                     "error_message": error_message,
                     "retry_count": new_retry_count,
                 }).eq("id", post["id"]).execute()
                 
-                # Re-enqueue with delay
                 delay = RETRY_DELAYS[new_retry_count - 1] if new_retry_count <= len(RETRY_DELAYS) else RETRY_DELAYS[-1]
                 logger.info(f"Retrying post {post_id} in {delay} seconds (attempt {new_retry_count + 1}/{MAX_RETRIES})")
-                await asyncio.sleep(delay)
-                # Re-queue the job
-                await ctx['redis'].enqueue_job('process_post', post_id)
+                
+                # Schedule retry using asyncio
+                async def delayed_retry():
+                    await asyncio.sleep(delay)
+                    await process_post(post_id)
+                
+                asyncio.create_task(delayed_retry())
     
     except Exception as e:
         # Catastrophic error
@@ -327,7 +382,7 @@ async def process_post(ctx: Dict[str, Any], post_id: str) -> None:
             pass  # Best effort
 
 
-async def recompute_reputation(ctx: Dict[str, Any]) -> None:
+async def recompute_reputation() -> None:
     """
     Cron job to update user reputation based on engagement.
     Uses the recompute_reputation RPC function.
@@ -340,7 +395,7 @@ async def recompute_reputation(ctx: Dict[str, Any]) -> None:
         logger.error(f"Error recomputing reputation: {str(e)}")
 
 
-async def retry_failed_posts(ctx: Dict[str, Any]) -> None:
+async def retry_failed_posts() -> None:
     """
     Cron job to retry failed posts that might have been due to temporary issues.
     Only retries posts that failed less than 24 hours ago.
@@ -354,18 +409,19 @@ async def retry_failed_posts(ctx: Dict[str, Any]) -> None:
         
         if result.data:
             for post in result.data:
-                # Reset to pending and enqueue
+                # Reset to pending
                 supabase.table("posts").update({
                     "llm_status": "pending",
                 }).eq("id", post["id"]).execute()
                 
-                await ctx['redis'].enqueue_job('process_post', post["id"])
+                # Process using asyncio.create_task
+                asyncio.create_task(process_post(post["id"]))
                 logger.info(f"Re-queued failed post {post['id']}")
     except Exception as e:
         logger.error(f"Error retrying failed posts: {str(e)}")
 
 
-async def process_pending_posts(ctx: Dict[str, Any]) -> None:
+async def process_pending_posts() -> None:
     """
     Cron job to process any pending posts that might have been missed.
     Runs every 5 minutes to catch stragglers.
@@ -379,13 +435,13 @@ async def process_pending_posts(ctx: Dict[str, Any]) -> None:
         
         if result.data:
             for post in result.data:
-                await ctx['redis'].enqueue_job('process_post', post["id"])
+                asyncio.create_task(process_post(post["id"]))
             logger.info(f"Enqueued {len(result.data)} pending posts")
     except Exception as e:
         logger.error(f"Error processing pending posts: {str(e)}")
 
 
-async def score_market_alignments(ctx: Dict[str, Any]) -> None:
+async def score_market_alignments() -> None:
     """
     Cron job to score posts against actual market movements.
     Runs daily to update historical accuracy for recent posts.
@@ -397,7 +453,189 @@ async def score_market_alignments(ctx: Dict[str, Any]) -> None:
         logger.error(f"Error scoring market alignments: {str(e)}")
 
 
-async def rerank_by_market_events(ctx: Dict[str, Any]) -> None:
+async def snapshot_market_data() -> None:
+    """
+    Cron job to snapshot market data for trending tickers.
+    Stores OHLC data in market_snapshots table for historical tracking.
+    """
+    supabase = get_supabase_client()
+    try:
+        # Get trending tickers from the last 24 hours
+        result = supabase.rpc("get_trending_tickers", {
+            "p_hours": 24,
+            "p_limit": 50,  # Snapshot top 50 trending tickers
+        }).execute()
+        
+        if not result.data:
+            # Fallback to popular tickers if no trending data
+            tickers = ["NVDA", "TSLA", "AAPL", "AMD", "MSFT", "GOOGL", "AMZN", "META", "PLTR", "COIN"]
+        else:
+            tickers = [row["ticker"] for row in result.data]
+        
+        snapshot_count = 0
+        
+        async def snapshot_ticker(ticker: str) -> bool:
+            """Snapshot a single ticker's market data."""
+            try:
+                ticker_obj = await asyncio.to_thread(yf.Ticker, ticker)
+                
+                def get_history():
+                    # Get today's data (1 day, 1 minute intervals for intraday)
+                    hist = ticker_obj.history(period="1d", interval="1m")
+                    if hist.empty:
+                        # Fallback to daily data
+                        hist = ticker_obj.history(period="5d", interval="1d")
+                    return hist
+                
+                hist = await asyncio.to_thread(get_history)
+                
+                if hist.empty:
+                    logger.warning(f"No market data available for {ticker}")
+                    return False
+                
+                # Get the most recent row
+                latest = hist.iloc[-1]
+                
+                # Get current price from fast_info as fallback
+                try:
+                    fast_info = await asyncio.to_thread(lambda: ticker_obj.fast_info)
+                    current_price = fast_info.last_price if fast_info.last_price else float(latest["Close"])
+                except:
+                    current_price = float(latest["Close"])
+                
+                # Insert snapshot
+                supabase.table("market_snapshots").insert({
+                    "ticker": ticker,
+                    "price": float(current_price),
+                    "volume": float(latest["Volume"]) if "Volume" in latest else None,
+                    "open": float(latest["Open"]) if "Open" in latest else None,
+                    "high": float(latest["High"]) if "High" in latest else None,
+                    "low": float(latest["Low"]) if "Low" in latest else None,
+                    "close": float(latest["Close"]) if "Close" in latest else None,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "source": "yfinance_snapshot",
+                }).execute()
+                
+                return True
+            except Exception as e:
+                logger.error(f"Error snapshotting {ticker}: {e}")
+                return False
+        
+        # Snapshot all tickers in parallel (limit concurrency)
+        tasks = [snapshot_ticker(ticker) for ticker in tickers[:30]]  # Limit to 30 to avoid rate limits
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        snapshot_count = sum(1 for r in results if r is True)
+        
+        logger.info(f"Successfully snapshotted {snapshot_count}/{len(tickers)} tickers")
+        
+    except Exception as e:
+        logger.error(f"Error snapshotting market data: {str(e)}")
+
+
+async def detect_trends_automatically() -> None:
+    """
+    Scheduled job to automatically detect trends from recent posts.
+    Runs periodically to identify emerging patterns and store them in trends/post_trends tables.
+    """
+    supabase = get_supabase_client()
+    try:
+        # Use 24h time window for trend detection
+        time_window = "24h"
+        hours = 24
+        min_posts = 5
+        threshold = datetime.utcnow() - timedelta(hours=hours)
+        
+        # Fetch recent processed posts
+        posts_result = supabase.table("posts").select(
+            "id, content, tickers, created_at"
+        ).eq("llm_status", "processed").gte(
+            "created_at", threshold.isoformat()
+        ).order("created_at", desc=True).limit(100).execute()
+        
+        if not posts_result.data or len(posts_result.data) < min_posts:
+            logger.info(f"Not enough posts for trend detection: {len(posts_result.data) if posts_result.data else 0} posts")
+            return
+        
+        # Prepare posts for LLM analysis
+        posts_content = []
+        post_ids = []
+        all_tickers = set()
+        
+        for post in posts_result.data[:50]:  # Limit to avoid token limits
+            posts_content.append(post["content"][:500])  # Truncate long posts
+            post_ids.append(post["id"])
+            if post.get("tickers"):
+                all_tickers.update(post["tickers"])
+        
+        # Call LLM for trend detection
+        combined_context = f"Recent posts from the last {time_window}:\n\n" + "\n---\n".join(posts_content)
+        
+        llm_result = await call_openrouter_chat(
+            "detect_community_trends",
+            combined_context,
+            list(all_tickers)
+        )
+        
+        parsed = llm_result["parsed"]
+        detected_trends = parsed.get("trends", [])
+        
+        if not detected_trends:
+            logger.info("No trends detected by LLM")
+            return
+        
+        # Store detected trends in database and link to posts
+        created_trends = []
+        for trend_data in detected_trends:
+            # Calculate expiration (trends expire based on time window)
+            expires_at = datetime.utcnow() + timedelta(hours=hours * 2)
+            
+            trend_insert = {
+                "trend_type": trend_data.get("trend_type", "community"),
+                "ticker": trend_data.get("supporting_tickers", [None])[0] if trend_data.get("supporting_tickers") else None,
+                "sector": trend_data.get("sector"),
+                "description": trend_data.get("description", ""),
+                "confidence": trend_data.get("confidence", 0.5),
+                "sentiment_direction": trend_data.get("sentiment_direction"),
+                "time_window": time_window,
+                "key_themes": trend_data.get("key_themes", []),
+                "supporting_post_ids": post_ids[:10],  # Sample of supporting posts
+                "expires_at": expires_at.isoformat(),
+            }
+            
+            try:
+                result = supabase.table("trends").insert(trend_insert).execute()
+                if result.data:
+                    trend_id = result.data[0]["id"]
+                    created_trends.append(trend_id)
+                    
+                    # Link posts to this trend via post_trends junction table
+                    # Use a sample of relevant posts (those mentioning the trend's ticker or sector)
+                    relevant_post_ids = post_ids[:20]  # Limit to avoid too many inserts
+                    
+                    for post_id in relevant_post_ids:
+                        try:
+                            # Calculate relevance score (simplified - could be improved)
+                            relevance_score = 0.7  # Default relevance
+                            
+                            supabase.table("post_trends").insert({
+                                "post_id": post_id,
+                                "trend_id": trend_id,
+                                "relevance_score": relevance_score,
+                            }).execute()
+                        except Exception as link_error:
+                            # Handle duplicate key errors gracefully
+                            if "duplicate" not in str(link_error).lower():
+                                logger.warning(f"Error linking post {post_id} to trend {trend_id}: {link_error}")
+            except Exception as trend_error:
+                logger.error(f"Error creating trend: {trend_error}")
+        
+        logger.info(f"Successfully detected and stored {len(created_trends)} trends")
+        
+    except Exception as e:
+        logger.error(f"Error in automatic trend detection: {str(e)}")
+
+
+async def rerank_by_market_events() -> None:
     """
     Dynamic re-ranking based on current market events.
     Boosts relevance of posts about tickers with significant recent activity.
@@ -455,15 +693,84 @@ def get_processing_stats() -> Dict[str, Any]:
         return {"error": str(e)}
 
 
-class WorkerSettings:
-    functions = [process_post, recompute_reputation, retry_failed_posts, process_pending_posts, score_market_alignments, rerank_by_market_events]
-    redis_settings = RedisSettings()
-    cron_jobs = [
-        cron(recompute_reputation, minute=0),  # Every hour
-        cron(retry_failed_posts, minute=30),  # Every hour at :30
-        cron(process_pending_posts, minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55}),  # Every 5 minutes
-        cron(score_market_alignments, hour=2, minute=0),  # Daily at 2 AM
-        cron(rerank_by_market_events, minute={0, 15, 30, 45}),  # Every 15 minutes
-    ]
+def start_scheduler() -> None:
+    """
+    Initialize and start the APScheduler with all cron jobs.
+    """
+    # Cron job: recompute reputation every hour at minute 0
+    scheduler.add_job(
+        recompute_reputation,
+        'cron',
+        minute=0,
+        id='recompute_reputation',
+        replace_existing=True
+    )
+    
+    # Cron job: retry failed posts every hour at minute 30
+    scheduler.add_job(
+        retry_failed_posts,
+        'cron',
+        minute=30,
+        id='retry_failed_posts',
+        replace_existing=True
+    )
+    
+    # Cron job: process pending posts every 5 minutes
+    scheduler.add_job(
+        process_pending_posts,
+        'cron',
+        minute='*/5',
+        id='process_pending_posts',
+        replace_existing=True
+    )
+    
+    # Cron job: score market alignments daily at 2 AM
+    scheduler.add_job(
+        score_market_alignments,
+        'cron',
+        hour=2,
+        minute=0,
+        id='score_market_alignments',
+        replace_existing=True
+    )
+    
+    # Cron job: rerank by market events every 15 minutes
+    scheduler.add_job(
+        rerank_by_market_events,
+        'cron',
+        minute='*/15',
+        id='rerank_by_market_events',
+        replace_existing=True
+    )
+    
+    # Cron job: snapshot market data every 30 minutes
+    scheduler.add_job(
+        snapshot_market_data,
+        'cron',
+        minute='*/30',
+        id='snapshot_market_data',
+        replace_existing=True
+    )
+    
+    # Cron job: detect trends automatically every 6 hours
+    scheduler.add_job(
+        detect_trends_automatically,
+        'cron',
+        hour='*/6',
+        minute=0,
+        id='detect_trends_automatically',
+        replace_existing=True
+    )
+    
+    scheduler.start()
+    logger.info("APScheduler started with all cron jobs")
 
+
+def shutdown_scheduler() -> None:
+    """
+    Gracefully shutdown the scheduler.
+    """
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
+        logger.info("APScheduler shut down")
 

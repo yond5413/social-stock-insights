@@ -146,3 +146,4 @@ ON insights(post_id, sentiment) WHERE sentiment IS NOT NULL;
 COMMENT ON FUNCTION get_ticker_sentiment_with_engagement IS 
 'Calculate engagement-weighted sentiment for a ticker. Uses LEFT JOINs to ensure all posts are counted, with base weight 1.0 + engagement bonus.';
 
+

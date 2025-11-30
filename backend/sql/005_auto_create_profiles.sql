@@ -53,3 +53,4 @@ COMMENT ON FUNCTION public.handle_new_user() IS
 'Automatically creates a profile entry in public.profiles when a new user signs up via Supabase Auth. This ensures data consistency between auth.users and public.profiles.';
 
 
+

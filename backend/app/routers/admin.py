@@ -162,3 +162,4 @@ async def get_recent_errors(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching errors: {str(e)}")
 
+
