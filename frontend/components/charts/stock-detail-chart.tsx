@@ -293,15 +293,15 @@ export function StockDetailChart({
                     const { x, width, payload, parentViewBox } = props
 
                     // Validate props
-                    if (!payload) return null
-                    if (typeof x !== 'number' || typeof width !== 'number') return null
+                    if (!payload) return <g></g>
+                    if (typeof x !== 'number' || typeof width !== 'number') return <g></g>
 
                     const { open, close, high, low } = payload
 
                     // Validate OHLC data
                     if (typeof open !== 'number' || typeof close !== 'number' ||
                       typeof high !== 'number' || typeof low !== 'number') {
-                      return null
+                      return <g></g>
                     }
 
                     // Try to get the scale function from yAxis or yAxisMap
@@ -327,7 +327,7 @@ export function StockDetailChart({
                     }
 
                     if (!scale || typeof scale !== 'function') {
-                      return null
+                      return <g></g>
                     }
 
                     // Calculate scaled positions
@@ -339,7 +339,7 @@ export function StockDetailChart({
                     // Validate scaled values
                     if (!isFinite(scaledHigh) || !isFinite(scaledLow) ||
                       !isFinite(scaledOpen) || !isFinite(scaledClose)) {
-                      return null
+                      return <g></g>
                     }
 
                     const isUp = close >= open
@@ -448,3 +448,4 @@ export function StockDetailChartSkeleton() {
     </div>
   )
 }
+

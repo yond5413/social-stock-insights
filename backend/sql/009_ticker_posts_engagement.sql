@@ -122,3 +122,4 @@ COMMENT ON FUNCTION count_ticker_posts IS
 
 
 
+

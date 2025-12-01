@@ -43,3 +43,4 @@ export function TickerChart({ ticker, trend = "up" }: { ticker: string, trend?: 
 
 
 
+

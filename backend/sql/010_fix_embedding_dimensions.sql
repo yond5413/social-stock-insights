@@ -48,3 +48,4 @@ CREATE POLICY "Service role can manage embeddings" ON post_embeddings
 -- (The function already expects vector(1024), so no changes needed)
 
 
+
