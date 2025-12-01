@@ -77,6 +77,10 @@ GET /health
 ```
 POST /posts/create - Create a new post
 GET /posts/{post_id} - Get a specific post
+POST /posts/{post_id}/like - Like a post
+DELETE /posts/{post_id}/like - Unlike a post
+POST /posts/{post_id}/comments - Add a comment
+GET /posts/{post_id}/comments - Get comments for a post
 ```
 
 ### Feed

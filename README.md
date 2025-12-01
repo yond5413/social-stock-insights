@@ -33,11 +33,17 @@ Think **StockTwits/Twitter, but optimized for deep stock analysis**: posts are t
   - Supabase Auth for sessions.
   - RLS policies set for app tables.
 
+- **Engagement**
+  - **Likes**: Users can like/unlike posts to signal quality.
+  - **Comments**: Rich discussions on posts.
+  - **Usernames**: Posts display actual usernames from user profiles.
+
 - **Modern frontend**
   - Next.js app with:
     - Anonymous sign-in via Supabase Auth.
     - Create-post UI.
     - Ranked feed with summaries & scores.
+    - **Enhanced Search**: Fuzzy search with navigation bar.
 
 ---
 
@@ -55,7 +61,9 @@ Think **StockTwits/Twitter, but optimized for deep stock analysis**: posts are t
 
 ## Getting Started
 
-🚀 **Quick Start**: See [SETUP_GUIDE.md](./SETUP_GUIDE.md) for detailed setup instructions with API key links.
+🚀 **Quick Start**: See [SETUP_GUIDE.md](./SETUP_GUIDE.md) for detailed setup instructions.
+
+
 
 ### Prerequisites
 
