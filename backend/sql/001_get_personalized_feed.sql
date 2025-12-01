@@ -32,11 +32,11 @@ BEGIN
     WITH latest_insights AS (
         SELECT DISTINCT ON (post_id)
             post_id,
-            quality_score,
-            summary,
-            explanation,
-            sentiment,
-            created_at
+            public.insights.quality_score,
+            public.insights.summary,
+            public.insights.explanation,
+            public.insights.sentiment,
+            public.insights.created_at
         FROM public.insights
         ORDER BY post_id, created_at DESC
     ),
