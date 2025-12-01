@@ -28,7 +28,7 @@ export interface TickerPost {
 export interface TickerPostsData {
   ticker: string
   posts: TickerPost[]
-  total_count: number
+  total: number
   sentiment_summary: {
     bullish: number
     bearish: number
@@ -231,7 +231,7 @@ export function useTickerData(ticker: string) {
   return {
     // Posts data
     posts: postsData?.posts || [],
-    totalPosts: postsData?.total_count || 0,
+    totalPosts: postsData?.total || 0,
     sentimentSummary: postsData?.sentiment_summary || { bullish: 0, bearish: 0, neutral: 0 },
     hasMore: postsData?.has_more || false,
 

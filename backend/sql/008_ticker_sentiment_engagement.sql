@@ -74,7 +74,7 @@ BEGIN
             -- Simple counts
             COUNT(*) FILTER (WHERE sentiment = 'bullish') as bullish_cnt,
             COUNT(*) FILTER (WHERE sentiment = 'bearish') as bearish_cnt,
-            COUNT(*) FILTER (WHERE sentiment = 'neutral') as neutral_cnt,
+            COUNT(*) FILTER (WHERE sentiment = 'neutral' OR sentiment IS NULL) as neutral_cnt,
             
             -- Weighted counts (base weight 1.0 + engagement bonus)
             SUM(
@@ -94,11 +94,13 @@ BEGIN
             ) as weighted_neut,
             
             -- Average engagement for confidence calculation
-            AVG(view_count + like_count * 5 + comment_count * 10) as avg_eng,
-            
-            -- Collect themes from key_points
-            jsonb_agg(DISTINCT jsonb_array_elements(key_points)) FILTER (WHERE key_points IS NOT NULL) as themes
+            AVG(view_count + like_count * 5 + comment_count * 10) as avg_eng
         FROM ticker_posts
+    ),
+    themes_agg AS (
+        SELECT jsonb_agg(DISTINCT elem) as themes
+        FROM ticker_posts, jsonb_array_elements(key_points) elem
+        WHERE key_points IS NOT NULL
     ),
     confidence AS (
         -- Determine confidence level
@@ -124,9 +126,10 @@ BEGIN
         COALESCE(sc.weighted_neut, 0)::NUMERIC,
         COALESCE(sc.avg_eng, 0)::NUMERIC,
         COALESCE(c.conf_level, 'low'),
-        COALESCE(sc.themes, '[]'::JSONB)
+        COALESCE(t.themes, '[]'::JSONB)
     FROM sentiment_calc sc
-    CROSS JOIN confidence c;
+    CROSS JOIN confidence c
+    CROSS JOIN themes_agg t;
 END;
 $$ LANGUAGE plpgsql;
 
