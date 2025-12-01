@@ -56,6 +56,9 @@ async def get_feed(
     # Enrich with usernames
     ranked_posts = await _enrich_posts_with_usernames(supabase, ranked_posts)
     
+    # Enrich with user engagement
+    ranked_posts = await _enrich_posts_with_user_engagement(supabase, ranked_posts, user_id)
+    
     print(f"[get_feed] After enrichment, first post: {ranked_posts[0] if ranked_posts else 'none'}")
     
     return [FeedItem(**post) for post in ranked_posts]
@@ -108,6 +111,9 @@ async def get_personalized_feed(
     # Enrich with usernames
     ranked_posts = await _enrich_posts_with_usernames(supabase, ranked_posts)
     
+    # Enrich with user engagement
+    ranked_posts = await _enrich_posts_with_user_engagement(supabase, ranked_posts, user_id)
+    
     return [FeedItem(**post) for post in ranked_posts]
 
 
@@ -143,6 +149,9 @@ async def get_discovery_feed(
     # Enrich with usernames
     ranked_posts = await _enrich_posts_with_usernames(supabase, ranked_posts)
     
+    # Enrich with user engagement
+    ranked_posts = await _enrich_posts_with_user_engagement(supabase, ranked_posts, user_id)
+    
     return [FeedItem(**post) for post in ranked_posts]
 
 
@@ -177,6 +186,9 @@ async def get_timely_feed(
     
     # Enrich with usernames
     ranked_posts = await _enrich_posts_with_usernames(supabase, ranked_posts)
+    
+    # Enrich with user engagement
+    ranked_posts = await _enrich_posts_with_user_engagement(supabase, ranked_posts, user_id)
     
     return [FeedItem(**post) for post in ranked_posts]
 
@@ -326,6 +338,9 @@ async def get_following_feed(
     
     # Enrich with usernames using the robust helper
     posts = await _enrich_posts_with_usernames(supabase, posts)
+    
+    # Enrich with user engagement
+    posts = await _enrich_posts_with_user_engagement(supabase, posts, user_id)
         
     return [FeedItem(**post) for post in posts]
 
@@ -379,6 +394,34 @@ async def _enrich_posts_with_usernames(supabase: SupabaseClient, posts: List[dic
             fallback_count += 1
             
     print(f"[_enrich_posts_with_usernames] Enriched {len(posts)} posts: {mapped_count} mapped, {fallback_count} fallbacks")
+    return posts
+
+
+async def _enrich_posts_with_user_engagement(supabase: SupabaseClient, posts: List[dict], user_id: str) -> List[dict]:
+    """
+    Helper function to check if the current user has liked any of the posts.
+    """
+    if not posts or not user_id:
+        return posts
+        
+    post_ids = [str(post.get("post_id") or post.get("id")) for post in posts]
+    
+    if not post_ids:
+        return posts
+        
+    # Fetch likes for these posts by this user
+    likes_result = supabase.table("post_engagement").select("post_id").eq("user_id", user_id).eq("type", "like").in_("post_id", post_ids).execute()
+    
+    liked_post_ids = set()
+    if likes_result.data:
+        for row in likes_result.data:
+            liked_post_ids.add(str(row["post_id"]))
+            
+    # Add user_has_liked to posts
+    for post in posts:
+        p_id = str(post.get("post_id") or post.get("id"))
+        post["user_has_liked"] = p_id in liked_post_ids
+        
     return posts
 
 

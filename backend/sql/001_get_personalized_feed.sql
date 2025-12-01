@@ -14,9 +14,15 @@ RETURNS TABLE (
     tickers text[],
     llm_status text,
     created_at timestamptz,
+    view_count int,
+    like_count int,
+    comment_count int,
+    engagement_score numeric,
     summary text,
+    sentiment text,
     quality_score numeric,
-    final_score numeric
+    final_score numeric,
+    is_processing boolean
 ) 
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -29,6 +35,7 @@ BEGIN
             quality_score,
             summary,
             explanation,
+            sentiment,
             created_at
         FROM public.insights
         ORDER BY post_id, created_at DESC
@@ -37,7 +44,8 @@ BEGIN
         SELECT
             post_id,
             COUNT(*) FILTER (WHERE type = 'like') as likes,
-            COUNT(*) FILTER (WHERE type = 'dislike') as dislikes
+            COUNT(*) FILTER (WHERE type = 'dislike') as dislikes,
+            COUNT(*) FILTER (WHERE type = 'comment') as comments
         FROM public.post_engagement
         GROUP BY post_id
     )
@@ -48,13 +56,23 @@ BEGIN
         p.tickers,
         p.llm_status,
         p.created_at,
+        COALESCE(p.view_count, 0)::int as view_count,
+        COALESCE(e.likes, 0)::int as like_count,
+        COALESCE(e.comments, 0)::int as comment_count,
+        (
+            COALESCE(p.view_count, 0) * 0.1 +
+            COALESCE(e.likes, 0) * 5.0 +
+            COALESCE(e.comments, 0) * 10.0
+        )::numeric as engagement_score,
         li.summary,
+        li.sentiment,
         li.quality_score,
         (
             COALESCE(li.quality_score, 0) * 0.5 +
             COALESCE(r.overall_score, 0) * 0.2 +
             COALESCE((COALESCE(e.likes, 0) - COALESCE(e.dislikes, 0))::numeric, 0) * 0.1
-        ) as final_score
+        ) as final_score,
+        (p.llm_status != 'processed')::boolean as is_processing
     FROM public.posts p
     LEFT JOIN latest_insights li ON li.post_id = p.id
     LEFT JOIN public.reputation r ON r.user_id = p.user_id
@@ -68,7 +86,6 @@ $$;
 -- Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION get_personalized_feed(uuid, int, int) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_personalized_feed(uuid, int, int) TO service_role;
-
 
 
 

@@ -13,6 +13,7 @@ export interface FeedItem {
   like_count?: number;
   comment_count?: number;
   engagement_score?: number;
+  user_has_liked?: boolean;
   sentiment?: string | null;
   is_processing?: boolean;
 }

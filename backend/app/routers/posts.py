@@ -109,6 +109,7 @@ async def create_post(
 async def get_posts_by_ticker(
     ticker: str,
     supabase: SupabaseClient,
+    user_id: CurrentUserId,  # Added user_id dependency
     limit: int = Query(20, ge=1, le=100, description="Number of posts to return"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
 ) -> Dict[str, Any]:
@@ -137,43 +138,42 @@ async def get_posts_by_ticker(
         
         total_count = count_result.data if count_result.data else 0
         
-        # Fetch usernames for these posts
-        user_ids = list(set([str(row["user_id"]) for row in result.data]))
-        username_map = {}
-        if user_ids:
-            profiles_result = supabase.table("profiles").select("id, username").in_("id", user_ids).execute()
-            if profiles_result.data:
-                for profile in profiles_result.data:
-                    username_map[str(profile["id"])] = profile.get("username")
+        # Enrich with usernames using robust helper
+        posts_data = result.data if result.data else []
+        enriched_posts = await _enrich_posts_with_usernames(supabase, posts_data)
+        
+        # Enrich with user engagement (likes)
+        enriched_posts = await _enrich_posts_with_user_engagement(supabase, enriched_posts, user_id)
 
         posts = []
-        if result.data:
-            for row in result.data:
-                user_id = str(row["user_id"])
-                username = username_map.get(user_id) or row.get("username") or f"User {user_id[:8]}"
-                
-                posts.append({
-                    "id": str(row["post_id"]),
-                    "user_id": user_id,
-                    "username": username,
-                    "content": row["content"],
-                    "tickers": row["tickers"],
-                    "llm_status": row["llm_status"],
-                    "created_at": row["created_at"].isoformat() if isinstance(row["created_at"], datetime) else str(row["created_at"]),
-                    "view_count": row["view_count"],
-                    "like_count": row["like_count"],
-                    "comment_count": row["comment_count"],
-                    "engagement_score": float(row["engagement_score"]) if row["engagement_score"] else 0.0,
-                    "summary": row.get("summary"),
-                    "explanation": row.get("explanation"),
-                    "sentiment": row.get("sentiment"),
-                    "quality_score": float(row["quality_score"]) if row.get("quality_score") else None,
-                    "final_score": float(row.get("final_score", 0)) if row.get("final_score") else 0.0,
-                    "insight_type": row.get("insight_type"),
-                    "sector": row.get("sector"),
-                    "author_reputation": float(row["author_reputation"]) if row.get("author_reputation") else 0.0,
-                    "is_processing": row["is_processing"],
-                })
+        for row in enriched_posts:
+            post_user_id = str(row["user_id"])
+            # Username is now guaranteed to be in the row if enrichment worked
+            username = row.get("username") or f"User {post_user_id[:8]}"
+            
+            posts.append({
+                "id": str(row["post_id"]),
+                "user_id": post_user_id,
+                "username": username,
+                "content": row["content"],
+                "tickers": row["tickers"],
+                "llm_status": row["llm_status"],
+                "created_at": row["created_at"].isoformat() if isinstance(row["created_at"], datetime) else str(row["created_at"]),
+                "view_count": row["view_count"],
+                "like_count": row["like_count"],
+                "comment_count": row["comment_count"],
+                "engagement_score": float(row["engagement_score"]) if row["engagement_score"] else 0.0,
+                "user_has_liked": row.get("user_has_liked", False),
+                "summary": row.get("summary"),
+                "explanation": row.get("explanation"),
+                "sentiment": row.get("sentiment"),
+                "quality_score": float(row["quality_score"]) if row.get("quality_score") else None,
+                "final_score": float(row.get("final_score", 0)) if row.get("final_score") else 0.0,
+                "insight_type": row.get("insight_type"),
+                "sector": row.get("sector"),
+                "author_reputation": float(row["author_reputation"]) if row.get("author_reputation") else 0.0,
+                "is_processing": row["is_processing"],
+            })
         
         return {
             "ticker": ticker,
@@ -308,11 +308,15 @@ async def search_posts(
         
         posts = []
         if result.data:
-            for row in result.data:
+            # Enrich with usernames
+            enriched_data = await _enrich_posts_with_usernames(supabase, result.data)
+            
+            for row in enriched_data:
                 # Handle potential missing columns if RPC changed or if returning partial data
                 posts.append({
                     "id": str(row.get("id")),
                     "user_id": str(row.get("user_id")),
+                    "username": row.get("username"),
                     "content": row.get("content"),
                     "tickers": row.get("tickers", []),
                     "llm_status": row.get("llm_status"),
@@ -344,19 +348,16 @@ async def get_user_posts(
         # Fetch posts directly from the table
         result = supabase.table("posts").select("*").eq("user_id", user_id).order("created_at", desc=True).range(offset, offset + limit - 1).execute()
         
-        # Get username from profile
-        profile_result = supabase.table("profiles").select("id, username").eq("id", user_id).execute()
-        username = None
-        if profile_result.data:
-            username = profile_result.data[0].get("username") or f"user_{user_id[:8]}"
-        
         posts = []
         if result.data:
-            for row in result.data:
+            # Enrich with usernames
+            enriched_data = await _enrich_posts_with_usernames(supabase, result.data)
+            
+            for row in enriched_data:
                 posts.append({
                     "id": str(row["id"]),
                     "user_id": str(row["user_id"]),
-                    "username": username,
+                    "username": row.get("username"),
                     "content": row["content"],
                     "tickers": row.get("tickers", []),
                     "llm_status": row.get("llm_status"),
@@ -423,6 +424,31 @@ async def like_post(
         )
 
 
+@router.post("/{post_id}/view")
+async def view_post(
+    post_id: str,
+    supabase: SupabaseClient,
+):
+    """Increment view count for a post."""
+    try:
+        # Call RPC to increment view count atomically
+        # If RPC doesn't exist, we can do a simple update, but RPC is better for concurrency
+        # For now, let's try a direct update if RPC isn't available, or create one.
+        # Actually, let's just use a direct update for simplicity in this iteration
+        
+        # Fetch current count
+        result = supabase.table("posts").select("view_count").eq("id", post_id).single().execute()
+        if result.data:
+            current_views = result.data.get("view_count", 0) or 0
+            supabase.table("posts").update({"view_count": current_views + 1}).eq("id", post_id).execute()
+            
+        return {"status": "success"}
+    except Exception as e:
+        # Don't fail the request if view count fails
+        print(f"Error incrementing view count: {e}")
+        return {"status": "error", "message": str(e)}
+
+
 @router.post("/{post_id}/comment")
 async def create_comment(
     post_id: str,
@@ -430,21 +456,34 @@ async def create_comment(
     user_id: CurrentUserId,
     supabase: SupabaseClient,
 ):
-    """Create a comment on a post."""
+    """Create a comment on a post using the new comments table."""
     try:
         data = {
             "post_id": post_id,
             "user_id": user_id,
-            "type": "comment",
             "content": request.content,
             "created_at": datetime.utcnow().isoformat()
         }
         
-        result = supabase.table("post_engagement").insert(data).execute()
+        # Insert into comments table
+        result = supabase.table("comments").insert(data).execute()
         
         if not result.data:
             raise HTTPException(status_code=500, detail="Failed to create comment")
             
+        # Also record in post_engagement for aggregation compatibility if needed, 
+        # but we are moving to a dedicated table. 
+        # For now, let's ALSO insert into post_engagement so existing stats queries work!
+        try:
+             supabase.table("post_engagement").insert({
+                "post_id": post_id,
+                "user_id": user_id,
+                "type": "comment",
+                "content": request.content, # Optional, but good for history
+            }).execute()
+        except Exception as e:
+            print(f"Warning: Failed to sync comment to post_engagement: {e}")
+
         return {"status": "success", "comment": result.data[0]}
         
     except Exception as e:
@@ -459,37 +498,25 @@ async def get_post_comments(
     post_id: str,
     supabase: SupabaseClient,
 ):
-    """Get comments for a post."""
+    """Get comments for a post from the new comments table."""
     try:
-        result = supabase.table("post_engagement").select(
+        result = supabase.table("comments").select(
             "id, user_id, content, created_at"
-        ).eq("post_id", post_id).eq("type", "comment").order("created_at", desc=False).execute()
+        ).eq("post_id", post_id).order("created_at", desc=False).execute()
         
         comments = []
         if result.data:
-            # Fetch usernames
-            user_ids = list(set([row["user_id"] for row in result.data]))
-            username_map = {}
-            if user_ids:
-                profiles = supabase.table("profiles").select("id, username").in_("id", user_ids).execute()
-                if profiles.data:
-                    for p in profiles.data:
-                        username_map[p["id"]] = p.get("username")
+            # Enrich with usernames
+            enriched_data = await _enrich_posts_with_usernames(supabase, result.data)
             
-            mapped_count = 0
-            for row in result.data:
-                username = username_map.get(row["user_id"])
-                if username:
-                    mapped_count += 1
-                
+            for row in enriched_data:
                 comments.append({
                     "id": row["id"],
                     "user_id": row["user_id"],
-                    "username": username or f"User {row['user_id'][:8]}",
+                    "username": row.get("username") or f"User {row['user_id'][:8]}",
                     "content": row["content"],
                     "created_at": row["created_at"]
                 })
-            print(f"Enriched {len(comments)} comments: {mapped_count} mapped")
                 
         return comments
         
@@ -498,4 +525,67 @@ async def get_post_comments(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching comments: {str(e)}"
         )
+
+
+async def _enrich_posts_with_usernames(supabase: SupabaseClient, posts: List[dict]) -> List[dict]:
+    """
+    Helper function to fetch usernames for a list of posts and add them to the post objects.
+    Duplicated from feed.py to ensure stability and avoid circular imports.
+    """
+    if not posts:
+        return []
+    
+    # Extract user IDs
+    user_ids = list(set([str(post.get("user_id")) for post in posts if post.get("user_id")]))
+    
+    if not user_ids:
+        return posts
+        
+    # Fetch profiles
+    profiles_result = supabase.table("profiles").select("id, username").in_("id", user_ids).execute()
+    
+    # Create map
+    username_map = {}
+    if profiles_result.data:
+        for profile in profiles_result.data:
+            username_map[str(profile["id"])] = profile.get("username")
+    
+    # Add usernames to posts
+    for post in posts:
+        user_id = str(post.get("user_id"))
+        if user_id in username_map and username_map[user_id]:
+            post["username"] = username_map[user_id]
+        else:
+            # Fallback if no username found
+            post["username"] = f"User {user_id[:8]}"
+            
+    return posts
+
+
+async def _enrich_posts_with_user_engagement(supabase: SupabaseClient, posts: List[dict], user_id: str) -> List[dict]:
+    """
+    Helper function to check if the current user has liked any of the posts.
+    """
+    if not posts or not user_id:
+        return posts
+        
+    post_ids = [str(post.get("post_id") or post.get("id")) for post in posts]
+    
+    if not post_ids:
+        return posts
+        
+    # Fetch likes for these posts by this user
+    likes_result = supabase.table("post_engagement").select("post_id").eq("user_id", user_id).eq("type", "like").in_("post_id", post_ids).execute()
+    
+    liked_post_ids = set()
+    if likes_result.data:
+        for row in likes_result.data:
+            liked_post_ids.add(str(row["post_id"]))
+            
+    # Add user_has_liked to posts
+    for post in posts:
+        p_id = str(post.get("post_id") or post.get("id"))
+        post["user_has_liked"] = p_id in liked_post_ids
+        
+    return posts
 

@@ -44,74 +44,22 @@ interface StockDetailChartProps {
 
 type ChartType = "candlestick" | "line"
 
-// Custom candlestick shape component
-function CandlestickBar(props: any) {
-  const { x, y, width, height, payload } = props
-  
-  if (!payload) return null
-  
-  const { open, close, high, low } = payload
-  const isUp = close >= open
-  const color = isUp ? "#22c55e" : "#ef4444"
-  
-  // Calculate positions
-  const bodyTop = Math.min(open, close)
-  const bodyBottom = Math.max(open, close)
-  const bodyHeight = Math.abs(close - open)
-  
-  // Scale values for display
-  const yScale = props.yScale || ((v: number) => v)
-  const scaledHigh = yScale(high)
-  const scaledLow = yScale(low)
-  const scaledBodyTop = yScale(bodyTop)
-  const scaledBodyBottom = yScale(bodyBottom)
-  
-  const candleWidth = Math.max(width * 0.6, 3)
-  const wickWidth = 1
-  const candleX = x + (width - candleWidth) / 2
-  const wickX = x + width / 2
-  
-  return (
-    <g>
-      {/* Wick (high to low) */}
-      <line
-        x1={wickX}
-        y1={scaledHigh}
-        x2={wickX}
-        y2={scaledLow}
-        stroke={color}
-        strokeWidth={wickWidth}
-      />
-      {/* Body */}
-      <rect
-        x={candleX}
-        y={scaledBodyTop}
-        width={candleWidth}
-        height={Math.max(scaledBodyBottom - scaledBodyTop, 1)}
-        fill={isUp ? color : color}
-        stroke={color}
-        strokeWidth={1}
-      />
-    </g>
-  )
-}
-
 // Custom tooltip component
 function CustomTooltip({ active, payload, chartType }: any) {
   if (!active || !payload || !payload.length) return null
-  
+
   const data = payload[0].payload
-  
+
   return (
     <div className="bg-background/95 backdrop-blur-sm border border-border rounded-xl px-4 py-3 shadow-xl">
       <p className="text-xs text-muted-foreground mb-2 font-medium">
-        {new Date(data.date).toLocaleDateString('en-US', { 
-          month: 'short', 
+        {new Date(data.date).toLocaleDateString('en-US', {
+          month: 'short',
           day: 'numeric',
           year: 'numeric'
         })}
       </p>
-      
+
       {chartType === "candlestick" && (
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
           <span className="text-muted-foreground">Open</span>
@@ -129,7 +77,7 @@ function CustomTooltip({ active, payload, chartType }: any) {
           </span>
         </div>
       )}
-      
+
       {chartType === "line" && (
         <div className="space-y-1">
           <p className="text-lg font-bold">${data.close?.toFixed(2)}</p>
@@ -138,8 +86,8 @@ function CustomTooltip({ active, payload, chartType }: any) {
               <span className={cn(
                 "px-1.5 py-0.5 rounded",
                 data.sentimentScore > 0 ? "bg-green-500/10 text-green-600" :
-                data.sentimentScore < 0 ? "bg-red-500/10 text-red-600" :
-                "bg-gray-500/10 text-gray-600"
+                  data.sentimentScore < 0 ? "bg-red-500/10 text-red-600" :
+                    "bg-gray-500/10 text-gray-600"
               )}>
                 {data.sentimentScore > 0 ? "+" : ""}{(data.sentimentScore * 100).toFixed(0)}%
               </span>
@@ -148,7 +96,7 @@ function CustomTooltip({ active, payload, chartType }: any) {
           )}
         </div>
       )}
-      
+
       {data.volume && (
         <div className="mt-2 pt-2 border-t border-border">
           <span className="text-xs text-muted-foreground">
@@ -167,17 +115,17 @@ export function StockDetailChart({
   className,
 }: StockDetailChartProps) {
   const [chartType, setChartType] = useState<ChartType>("line")
-  
+
   // Merge price and sentiment data
   const data = useMemo(() => {
     const sentimentMap = new Map(
       sentiment.map(s => [s.date.split("T")[0], s])
     )
-    
+
     return prices.map(p => {
       const dateKey = p.date.split("T")[0]
       const sentimentData = sentimentMap.get(dateKey)
-      
+
       return {
         ...p,
         date: dateKey,
@@ -189,15 +137,15 @@ export function StockDetailChart({
       }
     })
   }, [prices, sentiment])
-  
+
   // Calculate price stats
   const stats = useMemo(() => {
     if (data.length === 0) return null
-    
+
     const closes = data.map(d => d.close)
     const highs = data.map(d => d.high)
     const lows = data.map(d => d.low)
-    
+
     return {
       min: Math.min(...lows),
       max: Math.max(...highs),
@@ -206,7 +154,7 @@ export function StockDetailChart({
       last: data[data.length - 1]?.close ?? 0,
     }
   }, [data])
-  
+
   if (!data.length || !stats) {
     return (
       <div className={cn("flex items-center justify-center h-[400px] text-muted-foreground", className)}>
@@ -214,14 +162,14 @@ export function StockDetailChart({
       </div>
     )
   }
-  
+
   const priceChange = ((stats.last - stats.first) / stats.first) * 100
   const isUp = priceChange >= 0
-  
+
   // Calculate Y domain with padding
   const yPadding = (stats.max - stats.min) * 0.1
   const yDomain = [stats.min - yPadding, stats.max + yPadding]
-  
+
   return (
     <div className={cn("space-y-4", className)}>
       {/* Chart Type Toggle */}
@@ -255,7 +203,7 @@ export function StockDetailChart({
             </Button>
           </div>
         </div>
-        
+
         <div className={cn(
           "text-sm font-semibold px-2 py-1 rounded",
           isUp ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600"
@@ -263,22 +211,22 @@ export function StockDetailChart({
           {isUp ? "+" : ""}{priceChange.toFixed(2)}%
         </div>
       </div>
-      
+
       {/* Main Chart */}
       <div className="h-[350px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop 
-                  offset="0%" 
-                  stopColor={isUp ? "#22c55e" : "#ef4444"} 
-                  stopOpacity={0.3} 
+                <stop
+                  offset="0%"
+                  stopColor={isUp ? "#22c55e" : "#ef4444"}
+                  stopOpacity={0.3}
                 />
-                <stop 
-                  offset="100%" 
-                  stopColor={isUp ? "#22c55e" : "#ef4444"} 
-                  stopOpacity={0} 
+                <stop
+                  offset="100%"
+                  stopColor={isUp ? "#22c55e" : "#ef4444"}
+                  stopOpacity={0}
                 />
               </linearGradient>
               <linearGradient id="sentimentGradient" x1="0" y1="0" x2="0" y2="1">
@@ -286,15 +234,15 @@ export function StockDetailChart({
                 <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
               </linearGradient>
             </defs>
-            
-            <CartesianGrid 
-              strokeDasharray="3 3" 
-              stroke="hsl(var(--border))" 
+
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="hsl(var(--border))"
               opacity={0.3}
               vertical={false}
             />
-            
-            <XAxis 
+
+            <XAxis
               dataKey="date"
               axisLine={false}
               tickLine={false}
@@ -305,7 +253,7 @@ export function StockDetailChart({
               }}
               minTickGap={50}
             />
-            
+
             <YAxis
               domain={yDomain}
               axisLine={false}
@@ -314,17 +262,17 @@ export function StockDetailChart({
               tickFormatter={(value) => `$${value.toFixed(0)}`}
               width={60}
             />
-            
+
             <Tooltip content={<CustomTooltip chartType={chartType} />} />
-            
+
             {/* Average price reference line */}
-            <ReferenceLine 
-              y={stats.avg} 
+            <ReferenceLine
+              y={stats.avg}
               stroke="hsl(var(--muted-foreground))"
               strokeDasharray="3 3"
               strokeOpacity={0.5}
             />
-            
+
             {chartType === "line" ? (
               <>
                 <Area
@@ -342,32 +290,74 @@ export function StockDetailChart({
                 <Bar
                   dataKey="high"
                   shape={(props: any) => {
-                    const { x, width, payload, yAxisMap } = props
-                    if (!payload || !yAxisMap) return <g />
-                    
-                    const yAxis = Object.values(yAxisMap)[0] as any
-                    const yScale = yAxis?.scale
-                    if (!yScale) return <g />
-                    
+                    const { x, width, payload, parentViewBox } = props
+
+                    // Validate props
+                    if (!payload) return null
+                    if (typeof x !== 'number' || typeof width !== 'number') return null
+
                     const { open, close, high, low } = payload
+
+                    // Validate OHLC data
+                    if (typeof open !== 'number' || typeof close !== 'number' ||
+                      typeof high !== 'number' || typeof low !== 'number') {
+                      return null
+                    }
+
+                    // Try to get the scale function from yAxis or yAxisMap
+                    let scale = props.yAxis?.scale;
+                    if (!scale && props.yAxisMap) {
+                      const axisId = props.yAxisId || 0;
+                      scale = props.yAxisMap[axisId]?.scale;
+                    }
+
+                    // Fallback: Manually calculate scale if parentViewBox and yDomain are available
+                    if ((!scale || typeof scale !== 'function') && parentViewBox && yDomain) {
+                      const [min, max] = yDomain
+                      const domainRange = max - min
+                      const height = parentViewBox.height
+                      const top = parentViewBox.y || 0
+
+                      if (domainRange > 0) {
+                        scale = (value: number) => {
+                          const ratio = (value - min) / domainRange
+                          return top + height - (ratio * height)
+                        }
+                      }
+                    }
+
+                    if (!scale || typeof scale !== 'function') {
+                      return null
+                    }
+
+                    // Calculate scaled positions
+                    const scaledHigh = scale(high)
+                    const scaledLow = scale(low)
+                    const scaledOpen = scale(open)
+                    const scaledClose = scale(close)
+
+                    // Validate scaled values
+                    if (!isFinite(scaledHigh) || !isFinite(scaledLow) ||
+                      !isFinite(scaledOpen) || !isFinite(scaledClose)) {
+                      return null
+                    }
+
                     const isUp = close >= open
                     const color = isUp ? "#22c55e" : "#ef4444"
-                    
-                    const scaledHigh = yScale(high)
-                    const scaledLow = yScale(low)
-                    const scaledOpen = yScale(open)
-                    const scaledClose = yScale(close)
-                    
-                    const candleWidth = Math.max(width * 0.6, 4)
+
+                    // Calculate candle dimensions
+                    const candleWidth = Math.max(width * 0.6, 3)
                     const wickWidth = 1.5
                     const candleX = x + (width - candleWidth) / 2
                     const wickX = x + width / 2
-                    
+
+                    // Calculate body position and height
                     const bodyTop = Math.min(scaledOpen, scaledClose)
                     const bodyHeight = Math.max(Math.abs(scaledClose - scaledOpen), 1)
-                    
+
                     return (
                       <g>
+                        {/* Wick (high to low line) */}
                         <line
                           x1={wickX}
                           y1={scaledHigh}
@@ -376,6 +366,7 @@ export function StockDetailChart({
                           stroke={color}
                           strokeWidth={wickWidth}
                         />
+                        {/* Candle body */}
                         <rect
                           x={candleX}
                           y={bodyTop}
@@ -395,17 +386,17 @@ export function StockDetailChart({
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-      
+
       {/* Sentiment overlay bar */}
       {sentiment.length > 0 && chartType === "line" && (
         <div className="h-[60px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-              <XAxis 
-                dataKey="date" 
-                hide 
+              <XAxis
+                dataKey="date"
+                hide
               />
-              <YAxis 
+              <YAxis
                 domain={[-1, 1]}
                 hide
               />
@@ -417,7 +408,7 @@ export function StockDetailChart({
                 strokeWidth={1.5}
                 fill="url(#sentimentGradient)"
               />
-              <Tooltip 
+              <Tooltip
                 content={({ active, payload }) => {
                   if (!active || !payload?.[0]) return null
                   const d = payload[0].payload
@@ -457,6 +448,3 @@ export function StockDetailChartSkeleton() {
     </div>
   )
 }
-
-
-

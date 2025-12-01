@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -32,6 +32,7 @@ import { FeedItem } from "@/lib/types"
 import { TickerChart } from "./ticker-chart"
 import { useApi } from "@/hooks/useApi"
 import { useAuth } from "@/contexts/AuthContext"
+import { CommentsDialog } from "./comments-dialog"
 
 interface PostCardProps {
   post: FeedItem
@@ -39,7 +40,8 @@ interface PostCardProps {
 
 export function PostCard({ post }: PostCardProps) {
   const [showInsight, setShowInsight] = useState(false)
-  const [isLiked, setIsLiked] = useState(false)
+  const [isLiked, setIsLiked] = useState(post.user_has_liked || false)
+  const hasViewed = useRef(false)
 
   const qualityScore = post.quality_score || 0
   const qualityPercent = qualityScore * 100
@@ -59,8 +61,30 @@ export function PostCard({ post }: PostCardProps) {
   const { apiRequest } = useApi()
   const { user } = useAuth()
 
-  // Import CommentsDialog
-  const { CommentsDialog } = require("./comments-dialog")
+  // Increment view count on mount
+  useEffect(() => {
+    if (hasViewed.current) return
+
+    const incrementView = async () => {
+      try {
+        await apiRequest(`/posts/${post.id}/view`, { method: "POST" })
+        hasViewed.current = true
+      } catch (error) {
+        console.error("Failed to increment view count:", error)
+      }
+    }
+
+    // Small delay to ensure it's actually seen (optional, but good practice)
+    const timer = setTimeout(incrementView, 1000)
+    return () => clearTimeout(timer)
+  }, [post.id, apiRequest])
+
+  // Sync isLiked state when post data changes (e.g. after refresh)
+  useEffect(() => {
+    setIsLiked(post.user_has_liked || false)
+    setLikeCountState(post.like_count || 0)
+    setCommentCountState(post.comment_count || 0)
+  }, [post.user_has_liked, post.like_count, post.comment_count])
 
   const handleLike = async () => {
     if (!user) return // Or show auth dialog

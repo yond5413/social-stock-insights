@@ -64,9 +64,9 @@ export default function SignupPage() {
   }
 
   const features = [
-    { icon: Zap, text: "Real-time AI-powered insights" },
-    { icon: Target, text: "Personalized stock recommendations" },
-    { icon: Shield, text: "Secure and encrypted data" },
+    { icon: Zap, text: "AI-driven sentiment from social media" },
+    { icon: Target, text: "Community-powered stock insights" },
+    { icon: Shield, text: "Free access to market analytics" },
   ]
 
   return (
@@ -114,10 +114,10 @@ export default function SignupPage() {
               <h2 className="text-4xl font-bold leading-tight mb-4">
                 Start Your Journey to
                 <br />
-                Smarter Trading
+                Smarter Investing
               </h2>
               <p className="text-lg text-white/80">
-                Create your account and unlock powerful AI-driven market insights in seconds.
+                Join a growing community discovering AI-powered insights from real social sentiment.
               </p>
             </motion.div>
 
@@ -145,18 +145,18 @@ export default function SignupPage() {
             </motion.div>
           </div>
 
-          {/* Trust Indicators */}
+          {/* Community Indicators */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
             className="space-y-3"
           >
-            <p className="text-sm text-white/60 uppercase tracking-wider">Trusted by investors at</p>
+            <p className="text-sm text-white/60 uppercase tracking-wider">Join our community</p>
             <div className="flex gap-6 items-center opacity-80">
-              <div className="text-lg font-semibold">Goldman</div>
-              <div className="text-lg font-semibold">JPMorgan</div>
-              <div className="text-lg font-semibold">Citadel</div>
+              <div className="text-lg font-semibold">Get Started</div>
+              <div className="text-lg font-semibold">AI-Powered</div>
+              <div className="text-lg font-semibold">Real-Time</div>
             </div>
           </motion.div>
         </div>
@@ -178,7 +178,7 @@ export default function SignupPage() {
                 </div>
                 <GradientText className="text-xl font-bold">Stock Insights</GradientText>
               </div>
-              
+
               <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
               <CardDescription>
                 Start analyzing stocks with AI-powered insights
@@ -244,7 +244,7 @@ export default function SignupPage() {
                       <p className="text-xs text-muted-foreground">
                         Password strength: {
                           passwordStrength < 40 ? "Weak" :
-                          passwordStrength < 70 ? "Medium" : "Strong"
+                            passwordStrength < 70 ? "Medium" : "Strong"
                         }
                       </p>
                     </motion.div>
@@ -263,9 +263,9 @@ export default function SignupPage() {
                 </p>
               </CardContent>
               <CardFooter className="flex flex-col space-y-4">
-                <Button 
-                  type="submit" 
-                  className="w-full h-11 bg-gradient-to-r from-blue-500 to-slate-500 hover:from-blue-600 hover:to-slate-600 text-white font-medium" 
+                <Button
+                  type="submit"
+                  className="w-full h-11 bg-gradient-to-r from-blue-500 to-slate-500 hover:from-blue-600 hover:to-slate-600 text-white font-medium"
                   disabled={loading}
                 >
                   {loading ? (

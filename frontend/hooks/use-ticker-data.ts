@@ -7,6 +7,7 @@ import { useApi } from '@/hooks/useApi'
 export interface TickerPost {
   id: string
   user_id: string
+  username: string
   content: string
   tickers: string[]
   llm_status: string
@@ -15,6 +16,7 @@ export interface TickerPost {
   like_count: number
   comment_count: number
   engagement_score: number
+  user_has_liked: boolean
   summary?: string
   explanation?: string
   sentiment?: string

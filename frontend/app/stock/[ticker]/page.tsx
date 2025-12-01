@@ -644,6 +644,7 @@ export default function StockDetailPage() {
                 post={{
                   id: post.id,
                   user_id: post.user_id,
+                  username: post.username,
                   content: post.content,
                   tickers: post.tickers,
                   llm_status: post.llm_status,
@@ -652,6 +653,7 @@ export default function StockDetailPage() {
                   like_count: post.like_count,
                   comment_count: post.comment_count,
                   engagement_score: post.engagement_score,
+                  user_has_liked: post.user_has_liked,
                   summary: post.summary,
                   sentiment: post.sentiment,
                   final_score: post.quality_score || 0.5,

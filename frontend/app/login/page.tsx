@@ -87,11 +87,11 @@ export default function LoginPage() {
                 Investment Decisions
               </h2>
               <p className="text-lg text-white/80">
-                Join thousands of investors leveraging AI-powered insights to stay ahead of the market.
+                Discover community-driven insights and AI-powered sentiment analysis.
               </p>
             </motion.div>
 
-            {/* Stats */}
+            {/* Value Propositions */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -101,38 +101,38 @@ export default function LoginPage() {
               <div className="glass-card p-4 rounded-xl">
                 <div className="flex items-center gap-2 mb-2">
                   <Users className="h-5 w-5" />
-                  <p className="text-2xl font-bold">10K+</p>
+                  <p className="text-2xl font-bold">Community</p>
                 </div>
-                <p className="text-sm text-white/80">Active Users</p>
+                <p className="text-sm text-white/80">Driven Insights</p>
               </div>
               <div className="glass-card p-4 rounded-xl">
                 <div className="flex items-center gap-2 mb-2">
                   <TrendingUp className="h-5 w-5" />
-                  <p className="text-2xl font-bold">50K+</p>
+                  <p className="text-2xl font-bold">Real-time</p>
                 </div>
-                <p className="text-sm text-white/80">Insights</p>
+                <p className="text-sm text-white/80">Sentiment Data</p>
               </div>
               <div className="glass-card p-4 rounded-xl">
                 <div className="flex items-center gap-2 mb-2">
                   <BarChart3 className="h-5 w-5" />
-                  <p className="text-2xl font-bold">92%</p>
+                  <p className="text-2xl font-bold">AI</p>
                 </div>
-                <p className="text-sm text-white/80">Accuracy</p>
+                <p className="text-sm text-white/80">Powered Analysis</p>
               </div>
             </motion.div>
           </div>
 
-          {/* Footer Quote */}
+          {/* Value Statement */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
             className="glass-card p-6 rounded-xl"
           >
-            <p className="text-lg italic mb-2">
-              "This platform has transformed how I approach the market. The AI insights are incredibly valuable."
+            <p className="text-lg font-medium mb-2">
+              Make informed decisions with AI-powered analysis of social sentiment and community discussions.
             </p>
-            <p className="text-sm text-white/80">- Sarah Chen, Portfolio Manager</p>
+            <p className="text-sm text-white/80">Get started today • Real-time insights • Instant access</p>
           </motion.div>
         </div>
       </div>
@@ -153,7 +153,7 @@ export default function LoginPage() {
                 </div>
                 <GradientText className="text-xl font-bold">Stock Insights</GradientText>
               </div>
-              
+
               <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
               <CardDescription>
                 Enter your credentials to access your account
@@ -200,9 +200,9 @@ export default function LoginPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col space-y-4">
-                <Button 
-                  type="submit" 
-                  className="w-full h-11 bg-gradient-to-r from-blue-500 to-slate-500 hover:from-blue-600 hover:to-slate-600 text-white font-medium" 
+                <Button
+                  type="submit"
+                  className="w-full h-11 bg-gradient-to-r from-blue-500 to-slate-500 hover:from-blue-600 hover:to-slate-600 text-white font-medium"
                   disabled={loading}
                 >
                   {loading ? (

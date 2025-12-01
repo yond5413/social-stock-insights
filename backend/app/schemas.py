@@ -28,10 +28,19 @@ class SearchResult(Post):
 
 
 class FeedItem(Post):
-    username: Optional[str] = None  # Added to prevent Pydantic from stripping this field
+    username: Optional[str] = None
     summary: Optional[str] = None
     quality_score: Optional[float] = None
     final_score: float
+    view_count: int = 0
+    like_count: int = 0
+    comment_count: int = 0
+    engagement_score: float = 0.0
+    user_has_liked: bool = False
+    insight_type: Optional[str] = None
+    sector: Optional[str] = None
+    author_reputation: float = 0.0
+    is_processing: bool = False
 
 
 class BatchTickersRequest(BaseModel):
