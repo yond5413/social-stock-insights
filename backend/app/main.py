@@ -1,12 +1,13 @@
 import json
 import asyncio
+import os
 from pathlib import Path
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import insights, feed, market, users, admin, trends, transparency, chat, posts
+from .routers import insights, feed, market, users, admin, trends, transparency, chat, posts, dashboard
 from .scheduler import start_scheduler, shutdown_scheduler
 
 
@@ -81,7 +82,6 @@ origins = [
 ]
 
 # Add allowed origins from env
-import os
 env_origins = os.getenv("ALLOWED_ORIGINS")
 if env_origins:
     origins.extend([origin.strip() for origin in env_origins.split(",")])
@@ -109,3 +109,4 @@ app.include_router(trends.router, prefix="/trends", tags=["trends"])
 app.include_router(transparency.router, prefix="/transparency", tags=["transparency"])
 app.include_router(chat.router, prefix="/chat", tags=["chat"])
 app.include_router(posts.router, prefix="/posts", tags=["posts"])
+app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])

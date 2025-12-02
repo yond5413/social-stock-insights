@@ -49,3 +49,4 @@ CREATE POLICY "Service role can manage embeddings" ON post_embeddings
 
 
 
+

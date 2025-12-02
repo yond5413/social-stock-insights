@@ -262,3 +262,4 @@ export function useTickerData(ticker: string) {
 
 
 
+

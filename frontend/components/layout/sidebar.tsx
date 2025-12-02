@@ -2,17 +2,23 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, TrendingUp, Bookmark, User, Settings, Sparkles, MessageSquare } from "lucide-react"
+import { Home, TrendingUp, Bookmark, User, Settings, Sparkles, MessageSquare, LayoutDashboard } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { GradientText } from "@/components/ui/gradient-text"
 
-interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
+interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> { }
 
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname()
 
   const routes = [
+    {
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      href: "/dashboard",
+      active: pathname === "/dashboard",
+    },
     {
       label: "Feed",
       icon: Home,
@@ -77,8 +83,8 @@ export function Sidebar({ className }: SidebarProps) {
                 asChild
                 className={cn(
                   "w-full justify-start gap-3 h-12 text-base font-medium transition-all hover:scale-[1.02]",
-                  route.active 
-                    ? "bg-gradient-to-r from-blue-500/10 to-slate-500/10 text-primary border-l-4 border-primary shadow-sm" 
+                  route.active
+                    ? "bg-gradient-to-r from-blue-500/10 to-slate-500/10 text-primary border-l-4 border-primary shadow-sm"
                     : "hover:bg-muted/50 border-l-4 border-transparent"
                 )}
               >

@@ -17,10 +17,18 @@ import { apiRequest } from "@/lib/api"
 import { FeedItem } from "@/lib/types"
 import { PostCard } from "@/components/feed/post-card"
 
+interface UserStats {
+  followers_count: number
+  following_count: number
+  reputation: number
+}
+
 export default function ProfilePage() {
   const { user } = useAuth()
   const [posts, setPosts] = useState<FeedItem[]>([])
+  const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [loadingPosts, setLoadingPosts] = useState(true)
+  const [loadingStats, setLoadingStats] = useState(true)
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -38,6 +46,22 @@ export default function ProfilePage() {
     fetchPosts()
   }, [user?.id])
 
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!user?.id) return
+      try {
+        const data = await apiRequest<UserStats>(`/users/${user.id}/stats`)
+        setUserStats(data)
+      } catch (error) {
+        console.error("Failed to fetch user stats:", error)
+      } finally {
+        setLoadingStats(false)
+      }
+    }
+
+    fetchStats()
+  }, [user?.id])
+
   if (!user) {
     return (
       <DashboardShell>
@@ -49,18 +73,18 @@ export default function ProfilePage() {
     )
   }
 
-  // Mock data - replace with real data from API
+  // Calculate stats from real data
   const stats = {
-    posts: 24,
-    reputation: 875,
-    accuracy: 89,
+    posts: posts.length,
+    reputation: userStats ? Math.round((userStats.reputation || 0) * 1000) : 0,
+    accuracy: userStats ? Math.round((userStats.reputation || 0) * 100) : 0, // Using reputation as accuracy proxy
   }
 
   const achievements = [
-    { id: 1, name: "First Post", icon: "🎯", unlocked: true },
-    { id: 2, name: "10 Posts", icon: "🔥", unlocked: true },
-    { id: 3, name: "Top Contributor", icon: "⭐", unlocked: true },
-    { id: 4, name: "Expert Analyst", icon: "🏆", unlocked: false },
+    { id: 1, name: "First Post", icon: "🎯", unlocked: posts.length > 0 },
+    { id: 2, name: "10 Posts", icon: "🔥", unlocked: posts.length >= 10 },
+    { id: 3, name: "Top Contributor", icon: "⭐", unlocked: (userStats?.reputation || 0) > 0.7 },
+    { id: 4, name: "Expert Analyst", icon: "🏆", unlocked: (userStats?.reputation || 0) > 0.9 },
   ]
 
   return (
@@ -127,24 +151,40 @@ export default function ProfilePage() {
 
         {/* Stats Grid */}
         <motion.div variants={fadeInUp} className="grid gap-4 md:grid-cols-3">
-          <StatCard
-            title="Total Posts"
-            value={stats.posts}
-            icon={MessageSquare}
-            change={12}
-          />
-          <StatCard
-            title="Reputation Score"
-            value={stats.reputation}
-            icon={TrendingUp}
-            change={5}
-          />
-          <StatCard
-            title="Accuracy Rate"
-            value={stats.accuracy}
-            icon={Award}
-            change={3}
-          />
+          {loadingStats ? (
+            <>
+              <Card className="animate-pulse">
+                <CardContent className="h-24" />
+              </Card>
+              <Card className="animate-pulse">
+                <CardContent className="h-24" />
+              </Card>
+              <Card className="animate-pulse">
+                <CardContent className="h-24" />
+              </Card>
+            </>
+          ) : (
+            <>
+              <StatCard
+                title="Total Posts"
+                value={stats.posts}
+                icon={MessageSquare}
+                change={0}
+              />
+              <StatCard
+                title="Reputation Score"
+                value={stats.reputation}
+                icon={TrendingUp}
+                change={0}
+              />
+              <StatCard
+                title="Accuracy Rate"
+                value={stats.accuracy}
+                icon={Award}
+                change={0}
+              />
+            </>
+          )}
         </motion.div>
 
         {/* Achievements */}

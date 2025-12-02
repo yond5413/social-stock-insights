@@ -323,3 +323,49 @@ async def get_user_accuracy_stats(user_id: str) -> Dict[str, Any]:
         }
 
 
+
+async def get_realtime_market_data(tickers: List[str]) -> Dict[str, Any]:
+    """
+    Get 'real-time' market data for a list of tickers using yfinance.
+    Note: yfinance data may be delayed.
+    """
+    if not tickers:
+        return {}
+    
+    try:
+        result = {}
+        
+        # Fetch each ticker individually to get previous close price
+        for ticker in tickers:
+            try:
+                ticker_obj = await asyncio.to_thread(yf.Ticker, ticker)
+                
+                def get_info():
+                    return ticker_obj.fast_info
+                
+                info = await asyncio.to_thread(get_info)
+                
+                if info.last_price is None:
+                    continue
+                
+                # Calculate change percent using previous close
+                if info.previous_close and info.previous_close > 0:
+                    change_percent = ((info.last_price - info.previous_close) / info.previous_close) * 100
+                else:
+                    change_percent = 0.0
+                
+                result[ticker] = {
+                    "price": float(info.last_price),
+                    "volume": int(info.last_volume) if info.last_volume else 0,
+                    "change_percent": round(change_percent, 2),
+                    "last_updated": datetime.utcnow().isoformat()
+                }
+            except Exception as ticker_error:
+                print(f"Error fetching data for {ticker}: {ticker_error}")
+                continue
+                    
+        return result
+        
+    except Exception as e:
+        print(f"Error fetching market data: {e}")
+        return {}
