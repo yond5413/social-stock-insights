@@ -10,12 +10,13 @@ import { Button } from "@/components/ui/button"
 import { staggerContainer, fadeInUp } from "@/lib/animations"
 import { Bookmark, Sparkles } from "lucide-react"
 import { GradientText } from "@/components/ui/gradient-text"
-import { apiRequest } from "@/lib/api"
+import { useApi } from "@/hooks/useApi"
 import { FeedItem } from "@/lib/types"
 import Link from "next/link"
 
 export default function BookmarksPage() {
   const { user, loading: authLoading } = useAuth()
+  const { apiRequest } = useApi()
   const [bookmarks, setBookmarks] = useState<FeedItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -38,7 +39,7 @@ export default function BookmarksPage() {
     if (user) {
       fetchBookmarks()
     }
-  }, [user])
+  }, [user, apiRequest])
 
   if (authLoading) {
     return (
