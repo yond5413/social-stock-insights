@@ -15,6 +15,7 @@ import {
   Eye,
   RefreshCw,
   Zap,
+  Bookmark,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -41,6 +42,7 @@ interface PostCardProps {
 export function PostCard({ post }: PostCardProps) {
   const [showInsight, setShowInsight] = useState(false)
   const [isLiked, setIsLiked] = useState(post.user_has_liked || false)
+  const [isBookmarked, setIsBookmarked] = useState(post.is_bookmarked || false)
   const hasViewed = useRef(false)
 
   const qualityScore = post.quality_score || 0
@@ -82,9 +84,10 @@ export function PostCard({ post }: PostCardProps) {
   // Sync isLiked state when post data changes (e.g. after refresh)
   useEffect(() => {
     setIsLiked(post.user_has_liked || false)
+    setIsBookmarked(post.is_bookmarked || false)
     setLikeCountState(post.like_count || 0)
     setCommentCountState(post.comment_count || 0)
-  }, [post.user_has_liked, post.like_count, post.comment_count])
+  }, [post.user_has_liked, post.is_bookmarked, post.like_count, post.comment_count])
 
   const handleLike = async () => {
     if (!user) return // Or show auth dialog
@@ -101,6 +104,24 @@ export function PostCard({ post }: PostCardProps) {
       setIsLiked(!newIsLiked)
       setLikeCountState(prev => !newIsLiked ? prev + 1 : prev - 1)
       console.error("Failed to toggle like:", error)
+    }
+  }
+
+  const handleBookmark = async () => {
+    if (!user) return
+
+    const newIsBookmarked = !isBookmarked
+    setIsBookmarked(newIsBookmarked)
+
+    try {
+      if (newIsBookmarked) {
+        await apiRequest(`/posts/${post.id}/bookmark`, { method: "POST" })
+      } else {
+        await apiRequest(`/posts/${post.id}/bookmark`, { method: "DELETE" })
+      }
+    } catch (error) {
+      setIsBookmarked(!newIsBookmarked)
+      console.error("Failed to toggle bookmark:", error)
     }
   }
 
@@ -343,6 +364,24 @@ export function PostCard({ post }: PostCardProps) {
               <Button variant="ghost" size="sm" className="flex-1 gap-2 hover:text-green-600 hover:bg-green-500/10 transition-colors">
                 <Share2 className="h-4 w-4" />
                 <span className="text-xs font-medium">Share</span>
+              </Button>
+            </motion.div>
+            <motion.div whileTap={{ scale: 0.95 }} className="flex-1 flex justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "gap-2 hover:text-yellow-600 hover:bg-yellow-500/10 transition-colors",
+                  isBookmarked && "text-yellow-600"
+                )}
+                onClick={handleBookmark}
+              >
+                <motion.div
+                  animate={isBookmarked ? { scale: [1, 1.2, 1] } : {}}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Bookmark className={cn("h-4 w-4", isBookmarked && "fill-current")} />
+                </motion.div>
               </Button>
             </motion.div>
           </div>

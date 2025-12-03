@@ -7,6 +7,7 @@ export interface FeedItem {
   llm_status: string | null;
   created_at: string;
   summary?: string | null;
+  sentiment?: string | null;
   quality_score?: number | null;
   final_score: number;
   view_count?: number;
@@ -14,9 +15,7 @@ export interface FeedItem {
   comment_count?: number;
   engagement_score?: number;
   user_has_liked?: boolean;
-  sentiment?: string | null;
+  is_bookmarked?: boolean;
+  insight_type?: string | null;
   is_processing?: boolean;
 }
-
-
-

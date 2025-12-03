@@ -172,7 +172,9 @@ async def get_posts_by_ticker(
                 "insight_type": row.get("insight_type"),
                 "sector": row.get("sector"),
                 "author_reputation": float(row["author_reputation"]) if row.get("author_reputation") else 0.0,
+                "author_reputation": float(row["author_reputation"]) if row.get("author_reputation") else 0.0,
                 "is_processing": row["is_processing"],
+                "is_bookmarked": row.get("is_bookmarked", False),
             })
         
         return {
@@ -422,6 +424,123 @@ async def like_post(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error toggling like: {str(e)}"
         )
+        
+
+
+
+@router.post("/{post_id}/bookmark")
+async def bookmark_post(
+    post_id: str,
+    user_id: CurrentUserId,
+    supabase: SupabaseClient,
+):
+    """Bookmark a post."""
+    try:
+        # Check if already bookmarked
+        existing = supabase.table("bookmarks").select("post_id").eq("post_id", post_id).eq("user_id", user_id).execute()
+        
+        if existing.data:
+            return {"status": "success", "message": "Already bookmarked"}
+            
+        supabase.table("bookmarks").insert({
+            "post_id": post_id,
+            "user_id": user_id
+        }).execute()
+            
+        return {"status": "success", "action": "bookmarked"}
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error bookmarking post: {str(e)}"
+        )
+
+
+@router.delete("/{post_id}/bookmark")
+async def unbookmark_post(
+    post_id: str,
+    user_id: CurrentUserId,
+    supabase: SupabaseClient,
+):
+    """Unbookmark a post."""
+    try:
+        supabase.table("bookmarks").delete().eq("post_id", post_id).eq("user_id", user_id).execute()
+        return {"status": "success", "action": "unbookmarked"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error unbookmarking post: {str(e)}"
+        )
+
+
+@router.get("/bookmarks")
+async def get_bookmarked_posts(
+    user_id: CurrentUserId,
+    supabase: SupabaseClient,
+    limit: int = Query(20, ge=1, le=50),
+    offset: int = Query(0, ge=0),
+):
+    """Get user's bookmarked posts."""
+    try:
+        # Get bookmarked post IDs
+        bookmarks_result = supabase.table("bookmarks").select("post_id, created_at").eq("user_id", user_id).order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+        
+        if not bookmarks_result.data:
+            return []
+            
+        post_ids = [b["post_id"] for b in bookmarks_result.data]
+        
+        # Fetch posts
+        posts_result = supabase.table("posts").select("*").in_("id", post_ids).execute()
+        
+        posts = []
+        if posts_result.data:
+            # Enrich with usernames
+            enriched_data = await _enrich_posts_with_usernames(supabase, posts_result.data)
+            # Enrich with engagement (including bookmarks)
+            enriched_data = await _enrich_posts_with_user_engagement(supabase, enriched_data, user_id)
+            
+            # Sort by bookmark date (need to map back)
+            # Create a map of post_id -> bookmark_created_at
+            bookmark_date_map = {b["post_id"]: b["created_at"] for b in bookmarks_result.data}
+            
+            for row in enriched_data:
+                posts.append({
+                    "id": str(row["id"]),
+                    "user_id": str(row["user_id"]),
+                    "username": row.get("username"),
+                    "content": row["content"],
+                    "tickers": row.get("tickers", []),
+                    "llm_status": row.get("llm_status"),
+                    "created_at": row["created_at"],
+                    "view_count": row.get("view_count", 0),
+                    "like_count": row.get("like_count", 0),
+                    "comment_count": row.get("comment_count", 0),
+                    "engagement_score": float(row.get("engagement_score", 0)) if row.get("engagement_score") else 0.0,
+                    "user_has_liked": row.get("user_has_liked", False),
+                    "is_bookmarked": row.get("is_bookmarked", False),
+                    "summary": row.get("summary"),
+                    "explanation": row.get("explanation"),
+                    "sentiment": row.get("sentiment"),
+                    "quality_score": float(row["quality_score"]) if row.get("quality_score") else None,
+                    "final_score": float(row.get("final_score", 0)) if row.get("final_score") else 0.0,
+                    "insight_type": row.get("insight_type"),
+                    "sector": row.get("sector"),
+                    "author_reputation": float(row.get("author_reputation", 0)) if row.get("author_reputation") else 0.0,
+                    "is_processing": row.get("is_processing", False),
+                    "bookmarked_at": bookmark_date_map.get(str(row["id"]))
+                })
+                
+            # Sort by bookmarked_at desc
+            posts.sort(key=lambda x: x.get("bookmarked_at", ""), reverse=True)
+            
+        return posts
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching bookmarks: {str(e)}"
+        )
 
 
 @router.post("/{post_id}/view")
@@ -586,6 +705,17 @@ async def _enrich_posts_with_user_engagement(supabase: SupabaseClient, posts: Li
     for post in posts:
         p_id = str(post.get("post_id") or post.get("id"))
         post["user_has_liked"] = p_id in liked_post_ids
+        
+    # Fetch bookmarks
+    bookmarks_result = supabase.table("bookmarks").select("post_id").eq("user_id", user_id).in_("post_id", post_ids).execute()
+    bookmarked_ids = set()
+    if bookmarks_result.data:
+        for row in bookmarks_result.data:
+            bookmarked_ids.add(str(row["post_id"]))
+            
+    for post in posts:
+        p_id = str(post.get("post_id") or post.get("id"))
+        post["is_bookmarked"] = p_id in bookmarked_ids
         
     return posts
 

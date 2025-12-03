@@ -3,6 +3,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Any, Dict, Optional
 
 from ..supabase_client import SupabaseClient, CurrentUserId, OptionalUserId, get_supabase_client
+from ..schemas import ProfileUpdate
 
 router = APIRouter()
 
@@ -54,6 +55,36 @@ async def sync_user(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to sync user profile: {str(e)}"
+        )
+
+
+@router.put("/profile")
+async def update_profile(
+    update: ProfileUpdate,
+    current_user_id: CurrentUserId,
+    supabase: SupabaseClient,
+):
+    """Update user profile (username)."""
+    try:
+        # Check if username is taken
+        existing = supabase.table("profiles").select("id").eq("username", update.username).neq("id", current_user_id).execute()
+        if existing.data:
+            raise HTTPException(status_code=400, detail="Username already taken")
+            
+        # Update profile
+        result = supabase.table("profiles").update({"username": update.username}).eq("id", current_user_id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to update profile")
+            
+        return {"status": "success", "message": "Profile updated", "user": result.data[0]}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update profile: {str(e)}"
         )
 
 

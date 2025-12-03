@@ -11,7 +11,9 @@ import { Badge } from "@/components/ui/badge"
 import { GradientText } from "@/components/ui/gradient-text"
 import { StatCard } from "@/components/ui/stat-card"
 import { staggerContainer, fadeInUp } from "@/lib/animations"
-import { Edit, MessageSquare, TrendingUp, Award, Star, Sparkles, Loader2 } from "lucide-react"
+import { Edit, MessageSquare, TrendingUp, Award, Star, Sparkles, Loader2, Check, X } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { apiRequest } from "@/lib/api"
 import { FeedItem } from "@/lib/types"
@@ -29,6 +31,9 @@ export default function ProfilePage() {
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [loadingPosts, setLoadingPosts] = useState(true)
   const [loadingStats, setLoadingStats] = useState(true)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editUsername, setEditUsername] = useState("")
+  const { toast } = useToast()
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -60,7 +65,40 @@ export default function ProfilePage() {
     }
 
     fetchStats()
+    fetchStats()
   }, [user?.id])
+
+  useEffect(() => {
+    if (user?.email) {
+      setEditUsername(user.email.split('@')[0])
+    }
+  }, [user?.email])
+
+  const handleUpdateProfile = async () => {
+    if (!user?.id || !editUsername.trim()) return
+
+    try {
+      await apiRequest("/users/profile", {
+        method: "PUT",
+        body: JSON.stringify({ username: editUsername }),
+      })
+
+      toast({
+        title: "Profile updated",
+        description: "Your username has been updated successfully.",
+      })
+      setIsEditing(false)
+      // Ideally reload user context or profile data here
+      window.location.reload()
+    } catch (error) {
+      console.error("Failed to update profile:", error)
+      toast({
+        title: "Update failed",
+        description: "Username may be taken or invalid.",
+        variant: "destructive",
+      })
+    }
+  }
 
   if (!user) {
     return (
@@ -127,9 +165,25 @@ export default function ProfilePage() {
               {/* Info */}
               <div className="flex-1 flex flex-col justify-end space-y-2">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-2xl md:text-3xl font-bold">
-                    {user.email?.split('@')[0] || 'User'}
-                  </h1>
+                  {isEditing ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={editUsername}
+                        onChange={(e) => setEditUsername(e.target.value)}
+                        className="h-8 w-48"
+                      />
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-green-500" onClick={handleUpdateProfile}>
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500" onClick={() => setIsEditing(false)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <h1 className="text-2xl md:text-3xl font-bold">
+                      {user.email?.split('@')[0] || 'User'}
+                    </h1>
+                  )}
                   <Badge className="bg-gradient-to-r from-blue-500 to-slate-500 text-white border-0">
                     <Sparkles className="h-3 w-3 mr-1" />
                     Pro
@@ -137,9 +191,18 @@ export default function ProfilePage() {
                 </div>
                 <p className="text-muted-foreground">{user.email}</p>
                 <div className="flex gap-2 mt-2">
-                  <Button size="sm" className="bg-gradient-to-r from-blue-500 to-slate-500 hover:from-blue-600 hover:to-slate-600">
-                    Edit Profile
-                  </Button>
+                  {!isEditing && (
+                    <Button
+                      size="sm"
+                      className="bg-gradient-to-r from-blue-500 to-slate-500 hover:from-blue-600 hover:to-slate-600"
+                      onClick={() => {
+                        setIsEditing(true)
+                        setEditUsername(user.email?.split('@')[0] || "")
+                      }}
+                    >
+                      Edit Profile
+                    </Button>
+                  )}
                   <Button size="sm" variant="outline">
                     Share Profile
                   </Button>

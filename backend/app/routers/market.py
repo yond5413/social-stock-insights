@@ -217,13 +217,8 @@ async def get_trending(supabase: SupabaseClient):
     Enriched with current market data.
     """
     # 1. Get top mentioned tickers in last 24h using RPC function
-    result = supabase.rpc(
-        "get_trending_tickers",
-        {
-            "p_hours": 24,
-            "p_limit": 10,
-        }
-    ).execute()
+    # 1. Get top mentioned tickers from Materialized View (cached)
+    result = supabase.table("trending_tickers_mv").select("ticker, post_count").limit(10).execute()
     
     trending_tickers = [row["ticker"] for row in result.data] if result.data else []
     
@@ -430,6 +425,28 @@ async def market_status():
     return get_market_status()
 
 
+@router.get("/search")
+async def search_tickers_endpoint(
+    supabase: SupabaseClient,
+    q: str = Query(..., description="Search query for ticker symbol or company name")
+) -> List[Dict[str, Any]]:
+    """
+    Search for tickers by symbol or company name.
+    Returns up to 10 matches ranked by similarity.
+    """
+    if not q or len(q.strip()) == 0:
+        return []
+    
+    try:
+        # Call the search_tickers RPC function
+        result = supabase.rpc("search_tickers", {"query_text": q.upper()}).execute()
+        
+        return result.data if result.data else []
+    except Exception as e:
+        print(f"Error searching tickers: {str(e)}")
+        return []
+
+
 # Cache for historical data (longer TTL since it changes less frequently)
 _history_cache: Dict[str, Dict[str, Any]] = {}
 HISTORY_CACHE_TTL_SECONDS = 900  # 15 minutes
@@ -609,10 +626,9 @@ async def market_stream(websocket: WebSocket):
         while True:
             # Fetch trending data using existing logic
             try:
-                result = supabase.rpc(
-                    "get_trending_tickers",
-                    {"p_hours": 24, "p_limit": 10}
-                ).execute()
+
+                # 1. Get top mentioned tickers from Materialized View (cached)
+                result = supabase.table("trending_tickers_mv").select("ticker, post_count").limit(10).execute()
                 
                 trending_tickers = [row["ticker"] for row in result.data] if result.data else []
                 
@@ -632,7 +648,7 @@ async def market_stream(websocket: WebSocket):
                             "price": info.last_price,
                             "change_percent": ((info.last_price - info.previous_close) / info.previous_close) * 100,
                             "volume": info.last_volume,
-                            "mentions": next((row["count"] for row in result.data if row["ticker"] == symbol), 0)
+                            "mentions": next((row["post_count"] for row in result.data if row["ticker"] == symbol), 0)
                         }
                     except Exception:
                         return None

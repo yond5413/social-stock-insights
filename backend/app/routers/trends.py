@@ -9,6 +9,22 @@ from ..llm import call_openrouter_chat
 router = APIRouter()
 
 
+@router.post("/refresh")
+async def refresh_trending(
+    supabase: SupabaseClient,
+    # In a real app, you might want to restrict this to admins or cron jobs
+):
+    """
+    Manually trigger a refresh of the trending tickers materialized view.
+    Useful for testing or if you don't have pg_cron set up.
+    """
+    try:
+        supabase.rpc("refresh_trending_tickers").execute()
+        return {"status": "success", "message": "Trending tickers refreshed"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error refreshing trends: {str(e)}")
+
+
 @router.get("/market")
 async def get_market_trends(
     supabase: SupabaseClient,

@@ -41,8 +41,16 @@ class FeedItem(Post):
     sector: Optional[str] = None
     author_reputation: float = 0.0
     is_processing: bool = False
+    author_reputation: float = 0.0
+    is_processing: bool = False
+    is_bookmarked: bool = False
     ranking_explanation: Optional[str] = None
 
 
 class BatchTickersRequest(BaseModel):
     tickers: List[str] = Field(..., min_items=1, max_items=50, description="List of ticker symbols")
+
+
+class ProfileUpdate(BaseModel):
+    username: str = Field(..., min_length=3, max_length=30, pattern="^[a-zA-Z0-9_]+$")
+

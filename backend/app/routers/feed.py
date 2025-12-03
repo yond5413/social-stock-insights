@@ -422,6 +422,17 @@ async def _enrich_posts_with_user_engagement(supabase: SupabaseClient, posts: Li
         p_id = str(post.get("post_id") or post.get("id"))
         post["user_has_liked"] = p_id in liked_post_ids
         
+    # Fetch bookmarks
+    bookmarks_result = supabase.table("bookmarks").select("post_id").eq("user_id", user_id).in_("post_id", post_ids).execute()
+    bookmarked_ids = set()
+    if bookmarks_result.data:
+        for row in bookmarks_result.data:
+            bookmarked_ids.add(str(row["post_id"]))
+            
+    for post in posts:
+        p_id = str(post.get("post_id") or post.get("id"))
+        post["is_bookmarked"] = p_id in bookmarked_ids
+        
     return posts
 
 
