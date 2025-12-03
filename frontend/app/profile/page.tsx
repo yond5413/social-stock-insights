@@ -11,13 +11,13 @@ import { Badge } from "@/components/ui/badge"
 import { GradientText } from "@/components/ui/gradient-text"
 import { StatCard } from "@/components/ui/stat-card"
 import { staggerContainer, fadeInUp } from "@/lib/animations"
-import { Edit, MessageSquare, TrendingUp, Award, Star, Sparkles, Loader2, Check, X } from "lucide-react"
-import { Input } from "@/components/ui/input"
+import { Edit, MessageSquare, TrendingUp, Award, Star, Sparkles, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { apiRequest } from "@/lib/api"
+import { useApi } from "@/hooks/useApi"
 import { FeedItem } from "@/lib/types"
 import { PostCard } from "@/components/feed/post-card"
+import { EditUsernameDialog } from "./edit-username-dialog"
 
 interface UserStats {
   followers_count: number
@@ -26,13 +26,13 @@ interface UserStats {
 }
 
 export default function ProfilePage() {
-  const { user } = useAuth()
+  const { user, userProfile, refreshProfile } = useAuth()
+  const { apiRequest } = useApi()
   const [posts, setPosts] = useState<FeedItem[]>([])
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [loadingPosts, setLoadingPosts] = useState(true)
   const [loadingStats, setLoadingStats] = useState(true)
-  const [isEditing, setIsEditing] = useState(false)
-  const [editUsername, setEditUsername] = useState("")
+  const [dialogOpen, setDialogOpen] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export default function ProfilePage() {
     }
 
     fetchPosts()
-  }, [user?.id])
+  }, [user?.id, apiRequest])
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -65,39 +65,23 @@ export default function ProfilePage() {
     }
 
     fetchStats()
-    fetchStats()
-  }, [user?.id])
+  }, [user?.id, apiRequest])
 
-  useEffect(() => {
-    if (user?.email) {
-      setEditUsername(user.email.split('@')[0])
-    }
-  }, [user?.email])
+  const handleUpdateProfile = async (newUsername: string) => {
+    if (!user?.id || !newUsername.trim()) return
 
-  const handleUpdateProfile = async () => {
-    if (!user?.id || !editUsername.trim()) return
+    await apiRequest("/users/profile", {
+      method: "PUT",
+      body: JSON.stringify({ username: newUsername }),
+    })
 
-    try {
-      await apiRequest("/users/profile", {
-        method: "PUT",
-        body: JSON.stringify({ username: editUsername }),
-      })
+    // Refresh profile in context to sync across all components
+    await refreshProfile()
 
-      toast({
-        title: "Profile updated",
-        description: "Your username has been updated successfully.",
-      })
-      setIsEditing(false)
-      // Ideally reload user context or profile data here
-      window.location.reload()
-    } catch (error) {
-      console.error("Failed to update profile:", error)
-      toast({
-        title: "Update failed",
-        description: "Username may be taken or invalid.",
-        variant: "destructive",
-      })
-    }
+    toast({
+      title: "Profile updated",
+      description: "Your username has been updated successfully.",
+    })
   }
 
   if (!user) {
@@ -135,9 +119,26 @@ export default function ProfilePage() {
       >
         {/* Cover & Avatar */}
         <motion.div variants={fadeInUp} className="relative">
-          {/* Cover Photo */}
-          <div className="h-32 md:h-48 rounded-xl bg-gradient-to-br from-blue-500 via-slate-500 to-blue-700 relative overflow-hidden">
-            <div className="absolute inset-0 bg-grid opacity-10"></div>
+          {/* Premium Cover Photo */}
+          <div className="h-32 md:h-48 rounded-xl relative overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+            {/* Animated gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-purple-500/10 to-slate-500/20 animate-pulse" />
+
+            {/* Geometric pattern */}
+            <div className="absolute inset-0" style={{
+              backgroundImage: `radial-gradient(circle at 25% 25%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                               radial-gradient(circle at 75% 75%, rgba(147, 51, 234, 0.1) 0%, transparent 50%),
+                               linear-gradient(45deg, transparent 48%, rgba(59, 130, 246, 0.05) 50%, transparent 52%),
+                               linear-gradient(-45deg, transparent 48%, rgba(147, 51, 234, 0.05) 50%, transparent 52%)`,
+              backgroundSize: '100% 100%, 100% 100%, 20px 20px, 20px 20px'
+            }} />
+
+            {/* Glass effect overlay */}
+            <div className="absolute inset-0 backdrop-blur-[1px] bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+
+            {/* Floating orbs */}
+            <div className="absolute top-4 left-[20%] w-32 h-32 bg-blue-500/10 rounded-full blur-2xl animate-pulse" />
+            <div className="absolute bottom-4 right-[30%] w-40 h-40 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
           </div>
 
           {/* Avatar & Basic Info */}
@@ -165,44 +166,23 @@ export default function ProfilePage() {
               {/* Info */}
               <div className="flex-1 flex flex-col justify-end space-y-2">
                 <div className="flex items-center gap-2">
-                  {isEditing ? (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        value={editUsername}
-                        onChange={(e) => setEditUsername(e.target.value)}
-                        className="h-8 w-48"
-                      />
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-green-500" onClick={handleUpdateProfile}>
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500" onClick={() => setIsEditing(false)}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <h1 className="text-2xl md:text-3xl font-bold">
-                      {user.email?.split('@')[0] || 'User'}
-                    </h1>
-                  )}
+                  <h1 className="text-2xl md:text-3xl font-bold">
+                    {userProfile?.username || user.email?.split('@')[0] || 'User'}
+                  </h1>
                   <Badge className="bg-gradient-to-r from-blue-500 to-slate-500 text-white border-0">
                     <Sparkles className="h-3 w-3 mr-1" />
                     Pro
                   </Badge>
                 </div>
-                <p className="text-muted-foreground">{user.email}</p>
                 <div className="flex gap-2 mt-2">
-                  {!isEditing && (
-                    <Button
-                      size="sm"
-                      className="bg-gradient-to-r from-blue-500 to-slate-500 hover:from-blue-600 hover:to-slate-600"
-                      onClick={() => {
-                        setIsEditing(true)
-                        setEditUsername(user.email?.split('@')[0] || "")
-                      }}
-                    >
-                      Edit Profile
-                    </Button>
-                  )}
+                  <Button
+                    size="sm"
+                    className="bg-gradient-to-r from-blue-500 to-slate-500 hover:from-blue-600 hover:to-slate-600"
+                    onClick={() => setDialogOpen(true)}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
                   <Button size="sm" variant="outline">
                     Share Profile
                   </Button>
@@ -316,6 +296,14 @@ export default function ProfilePage() {
           </Card>
         </motion.div>
       </motion.div>
+
+      {/* Username Edit Dialog */}
+      <EditUsernameDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        currentUsername={userProfile?.username || user.email?.split('@')[0] || ''}
+        onUpdate={handleUpdateProfile}
+      />
     </DashboardShell>
   )
 }
